@@ -56,10 +56,10 @@
   "devDependencies": {},
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/ssamurias/dsh-fish-kin.git"
+    "url": "git+https://github.com/mtai000/dsh-fish-kin.git"
   },
-  "homepage": "https://github.com/ssamurias/dsh-fish-kin#readme",
+  "homepage": "https://github.com/mtai000/dsh-fish-kin#readme",
   "bugs": {
-    "url": "https://github.com/ssamurias/dsh-fish-kin/issues"
+    "url": "https://github.com/mtai000/dsh-fish-kin/issues"
   }
 }

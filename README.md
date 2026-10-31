@@ -90,7 +90,7 @@ A [DeepSeek Harness](https://github.com/deepseek-ai) plugin. An event-sourced "p
 这是 DSH 插件，装进一个 profile：
 
 ```bash
-git clone https://github.com/<your-name>/dsh-fish-kin.git
+git clone https://github.com/mtai000/dsh-fish-kin.git
 cd dsh-fish-kin
 npm pack --cache .npm-cache          # 产出 dsh-fish-kin-x.y.z.tgz
 ```
