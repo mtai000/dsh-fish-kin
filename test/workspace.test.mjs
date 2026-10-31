@@ -104,3 +104,43 @@ test('工作区里的"家"也算她在家的目录', async () => {
   assert.ok(list.some((x) => x.endsWith('大肥鱼的家')), list.join(' | '))
   assert.ok(list.some((x) => x.includes('proj') && !x.endsWith('大肥鱼的家')), list.join(' | '))
 })
+
+test('串门：她可以去、但不住下', async () => {
+  const { loadConfig, saveConfig } = await import('../lib/fish/wake.js')
+  const { registerRestrict, visitsOf } = await import('../lib/fish/restrict.js')
+  const { isHerHome } = await import('../lib/fish/identity.js')
+  const { ensureWorkspaceHomes, HOME_DIR } = await import('../lib/fish/store.js')
+  const { existsSync } = await import('node:fs')
+
+  const base = await mkdtemp(join(tmpdir(), 'kin-visit-'))
+  const root = join(base, 'fish')
+  const guest = join(base, 'guest-proj')
+  await mkdir(root, { recursive: true })
+  await mkdir(guest, { recursive: true })
+  await writeFile(join(root, 'config.json'), JSON.stringify({ visits: [guest] }), 'utf8')
+
+  const cfg = await loadConfig(root)
+  assert.deepEqual(cfg.visits, [guest])
+  // visitsOf 归一化过（Windows 上会转小写、统一斜杠）
+  assert.equal(visitsOf(root).length, 1)
+  assert.ok(visitsOf(root)[0].endsWith('guest-proj'))
+
+  // 串门目录不建屋子
+  await ensureWorkspaceHomes(root, cfg.workspaces)
+  assert.equal(existsSync(join(guest, HOME_DIR)), false)
+
+  // 闸门在串门目录里也挂
+  let onCreated = null
+  const ctx = { on: (n, fn) => { if (n === 'agent/created') onCreated = fn; return () => {} } }
+  registerRestrict(ctx, { root, log: () => {} })
+  const calls = []
+  onCreated({ agent: { session: { header: { cwd: guest, id: 's1' } }, ctx: { tools: { guard: (fn) => { calls.push(fn); return () => {} } }, effect: () => {} } } })
+  assert.equal(calls.length, 1, '串门目录也要挂闸门')
+
+  // 串门时她也还是她（身份段照挂）
+  assert.equal(isHerHome({ session: { header: { cwd: guest } } }, root), true)
+
+  // 保存后读得回
+  await saveConfig({ visits: [join(base, 'another')] }, root)
+  assert.deepEqual((await loadConfig(root)).visits, [join(base, 'another')])
+})
