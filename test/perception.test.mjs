@@ -10,6 +10,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
+import { join } from 'node:path'
 import { withTemp } from './_fixture.mjs'
 import { normalizeSources, enabledSources, pickNextSource } from '../lib/perception/registry.js'
 import { plan, lastUsedBySource } from '../lib/perception/planner.js'
@@ -247,5 +248,85 @@ test('P2：观测台能看到认知小节与感知源', async () => {
     assert.equal(s.perception.perceived[0].ref, 'R1')
     assert.equal(s.perception.sources[0].id, 'a')
     assert.equal(s.perception.sources[0].adapter, 'external')
+  })
+})
+
+test('P3：fish_ask 只给声明过的行动立单', async () => {
+  const { registerAskTool } = await import('../lib/perception/ask.js')
+  const { listApprovals } = await import('../lib/fish/approvals.js')
+  await withTemp(async (root) => {
+    const specs = []
+    const ctx = { tools: { register: (s) => { specs.push(s); return () => {} } } }
+    const sources = normalizeSources({
+      bili: { title: '看 B 站', tools: { read: ['read_a'], act: ['act_a'] } },
+    })
+    registerAskTool(ctx, { root, sources, log: () => {} })
+    const tool = specs[0]
+
+    const bad = await tool.execute({ action: 'request', tool: 'rm_rf' })
+    assert.equal(bad.ok, false)
+    assert.match(bad.note, /我不能做这件事/)
+
+    const ok = await tool.execute({ action: 'request', tool: 'act_a', why: '想说一句', args: { text: 'hi' } })
+    assert.equal(ok.ok, true, ok.note)
+    const { pending } = await listApprovals(root)
+    assert.equal(pending.length, 1)
+    assert.equal(pending[0].kind, 'source-act')
+    assert.equal(pending[0].payload.tool, 'act_a')
+    assert.deepEqual(pending[0].payload.args, { text: 'hi' })
+
+    const check = await tool.execute({ action: 'check' })
+    assert.match(check.note, /看 B 站/)
+  })
+})
+
+test('P3：读类直接放行，行动类要通行证且一次用掉', async () => {
+  const { registerRestrict } = await import('../lib/fish/restrict.js')
+  const { createApproval, decideApproval } = await import('../lib/fish/approvals.js')
+  const { grantFromApproval, findGrantSync } = await import('../lib/perception/grants.js')
+  await withTemp(async (root) => {
+    const calls = { guard: [] }
+    let onCreated = null
+    const ctx = { on: (name, fn) => { if (name === 'agent/created') onCreated = fn; return () => {} } }
+    registerRestrict(ctx, { root, allow: ['read_a'], act: ['act_a'], log: () => {} })
+
+    const fakeAgent = {
+      session: { header: { cwd: join(root, 'home'), id: 's1' }, id: 's1' },
+      ctx: {
+        tools: { restrict: () => () => {}, guard: (fn) => { calls.guard.push(fn); return () => {} } },
+        effect: () => {},
+      },
+    }
+    onCreated({ agent: fakeAgent })
+    const guard = calls.guard[0]
+
+    assert.equal(guard({ name: 'read_a' }), undefined, '读类不需要许可')
+    assert.match(guard({ name: 'act_a' }), /先问他一声/, '没有许可就拦')
+
+    const made = await createApproval(root, { kind: 'source-act', payload: { source: 'bili', tool: 'act_a', args: {} } })
+    const dec = await decideApproval(root, made.approval.id, { verdict: 'approve' })
+    await grantFromApproval(root, dec.approval)
+    assert.ok(findGrantSync(root, 'act_a'))
+
+    assert.equal(guard({ name: 'act_a' }), undefined, '有许可就放行')
+    assert.equal(findGrantSync(root, 'act_a'), null, '放行后许可被用掉')
+    assert.match(guard({ name: 'act_a' }), /先问他一声/, '第二次要重新立单')
+  })
+})
+
+test('P3：批准 source-act = 发通行证（单子留着，守卫用一次）', async () => {
+  const { createApproval, decideApproval, readApproval } = await import('../lib/fish/approvals.js')
+  const { executeApproval } = await import('../lib/fish/execute.js')
+  const { findGrantSync } = await import('../lib/perception/grants.js')
+  await withTemp(async (root) => {
+    const made = await createApproval(root, { kind: 'source-act', title: 'x：act_a', payload: { source: 'x', tool: 'act_a', args: {} } })
+    const dec = await decideApproval(root, made.approval.id, { verdict: 'approve' })
+    assert.equal(dec.ok, true)
+
+    const r = await executeApproval({}, { root, approval: dec.approval })
+    assert.equal(r.ok, true, r.text)
+    assert.match(r.text, /通行证/)
+    assert.ok(await readApproval(root, made.approval.id), '单子要留着当通行证')
+    assert.ok(findGrantSync(root, 'act_a'))
   })
 })

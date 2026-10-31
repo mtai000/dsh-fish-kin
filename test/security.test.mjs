@@ -77,7 +77,7 @@ test('收窄：她只留 fish_commit / fish_bili，fish_kin 不在里面', async
 
     assert.equal(calls.restrict.length, 1)
     const allow = calls.restrict[0].allow
-    assert.deepEqual([...allow].sort(), ['fish_bili', 'fish_commit', 'read_image'], '抽帧/封面要能 read_image 才看得见')
+    assert.deepEqual([...allow].sort(), ['fish_ask', 'fish_bili', 'fish_commit', 'read_image'], 'fish_ask 是立单入口；read_image 才看得见画面')
     assert.equal(allow.includes('fish_kin'), false, '她不能自己批生育')
     assert.equal(allow.includes('fish_kin_ask_birth'), false)
     assert.equal(allow.includes('shell'), false)
@@ -172,7 +172,7 @@ test('启动时就把收窄挂上去（接线不能漏）', async () => {
     }
     for (const fn of handlers['agent/created'] ?? []) fn({ agent })
     assert.equal(calls.length, 1, '启动时应该已经挂了 agent/created 监听')
-    assert.deepEqual([...calls[0].allow].sort(), ['fish_bili', 'fish_commit', 'read_image'])
+    assert.deepEqual([...calls[0].allow].sort(), ['fish_ask', 'fish_bili', 'fish_commit', 'read_image'])
     fish.dispose()
   })
 })
