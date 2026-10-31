@@ -63,3 +63,44 @@ test('她的家在 <工作区>/fish，族谱就是工作区', async () => {
   assert.equal(kinRoot({ env: {}, home }), join(home, '家族B'))
   assert.equal(defaultRoot({ DSH_KIN_FAMILY_ROOT: join(home, '家族B') }), join(home, '家族B', 'fish'))
 })
+
+test('她的屋子叫「大肥鱼的家」，老档的 home/ 继续用', async () => {
+  const { paths, ensureDirs, HOME_DIR } = await import('../lib/fish/store.js')
+  const home = await mkdtemp(join(tmpdir(), 'kin-house-'))
+
+  assert.equal(HOME_DIR, '大肥鱼的家')
+  assert.equal(paths(join(home, 'fish')).home, join(home, 'fish', HOME_DIR))
+
+  await ensureDirs(join(home, 'fish'))
+  const { stat } = await import('node:fs/promises')
+  assert.ok(await stat(join(home, 'fish', HOME_DIR)).then(() => true), '她自己建了屋子')
+
+  // 老档：已经存在的 home/ 不被强行搬家
+  await mkdir(join(home, 'old', 'home'), { recursive: true })
+  assert.equal(paths(join(home, 'old')).home, join(home, 'old', 'home'))
+})
+
+test('她会主动在每个"在家"目录里建一个「大肥鱼的家」', async () => {
+  const { ensureWorkspaceHomes, HOME_DIR } = await import('../lib/fish/store.js')
+  const base = await mkdtemp(join(tmpdir(), 'kin-ws-'))
+  const w1 = join(base, 'proj-a')
+  const w2 = join(base, 'proj-b')
+  const made = await ensureWorkspaceHomes(join(base, 'fish'), [w1, w2])
+  assert.equal(made.length, 2)
+  for (const w of [w1, w2]) {
+    const st = await import('node:fs/promises').then((m) => m.stat(join(w, HOME_DIR)))
+    assert.ok(st.isDirectory())
+  }
+})
+
+test('工作区里的"家"也算她在家的目录', async () => {
+  const { workspacesOf } = await import('../lib/fish/restrict.js')
+  const base = await mkdtemp(join(tmpdir(), 'kin-ws2-'))
+  const root = join(base, 'fish')
+  await mkdir(root, { recursive: true })
+  const w = join(base, 'proj')
+  await writeFile(join(root, 'config.json'), JSON.stringify({ workspaces: [w] }), 'utf8')
+  const list = workspacesOf(root)
+  assert.ok(list.some((x) => x.endsWith('大肥鱼的家')), list.join(' | '))
+  assert.ok(list.some((x) => x.includes('proj') && !x.endsWith('大肥鱼的家')), list.join(' | '))
+})

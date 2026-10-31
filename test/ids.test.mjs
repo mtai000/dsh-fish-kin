@@ -26,7 +26,9 @@ test('同毫秒内单调递增（行序 == 时间序）', () => {
 })
 
 test('idTime 能解回生成时间', () => {
-  const now = Date.UTC(2026, 9, 31, 12, 0, 0)
+  // 注意：id 是**单调**的（同一进程里不会因为传了个更早的时间就倒退），
+  // 所以这里要用未来时间，否则会撞上"只增不减"的保护。
+  const now = Date.now() + 60_000
   const id = newEventId(now)
   assert.equal(idTime(id), now)
 })
