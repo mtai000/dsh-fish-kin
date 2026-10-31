@@ -196,3 +196,22 @@ test('宿主没有 workspaceRegistry 时退回 cwd 建会话（不阻断）', as
   assert.equal(r.ok, true)
   assert.ok(created[0].cwd && String(created[0].cwd).includes('大肥鱼的家'))
 })
+
+test('任何叫「大肥鱼的家」的目录都算她在家（用户自己建的也算）', async () => {
+  const { isHerHome } = await import('../lib/fish/identity.js')
+  const { normPath } = await import('../lib/text.js')
+  const base = await mkdtemp(join(tmpdir(), 'kin-place-'))
+  const root = join(base, 'fish')
+  await mkdir(root, { recursive: true })
+
+  const at = (cwd) => isHerHome({ session: { header: { cwd } } }, root, normPath)
+  const bs = String.fromCharCode(92)
+  // 用户在 D 盘自己建的那个
+  assert.equal(at('D:' + bs + '大肥鱼的家' + bs + '大肥鱼的家'), true)
+  // 它爹也叫这个名字——同样算她在家（工作区本身）
+  assert.equal(at('D:' + bs + '大肥鱼的家'), true)
+  // 别的地方不是她家
+  assert.equal(at('D:' + bs + 'somewhere' + bs + 'else'), false)
+  // 她自己的屋子仍然是
+  assert.equal(at(join(root, '大肥鱼的家')), true)
+})
