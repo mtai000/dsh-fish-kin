@@ -26,11 +26,14 @@ const styleArg = (() => {
   return i >= 0 ? String(args[i + 1] ?? 'cute') : ''
 })()
 if (!styleArg) {
-  console.log('用法: node tools/fresh-start.mjs --style cute|none')
+  console.log('用法: node tools/fresh-start.mjs --style cute|none|"一句你自己的描写"')
   console.log('  会把她的事件流归档到 <她家>/archive/<时间戳>/，然后用这个风格重新播种。')
   process.exit(0)
 }
-const style = ['cute', 'none'].includes(styleArg) ? styleArg : 'cute'
+// 除了内置的两个词，其它一律当作用户写的风格文本
+const style = styleArg === 'none' ? { preset: 'none', text: '' }
+  : styleArg === 'cute' ? { preset: 'cute', text: '' }
+    : { preset: 'cute', text: String(styleArg) }
 const root = process.env.DSH_KIN_FISH_HOME || join(homedir(), '.dsh-fish-kin', 'fish')
 
 const { readEvents, ensureSeed } = await load('store.js')

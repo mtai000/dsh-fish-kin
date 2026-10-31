@@ -91,14 +91,13 @@ test('压薄是默认：只留边界和最多两条判断，日记与关系不�
     ev('reunion', '你回来的时候我没说话'),
   ]
   const p = composePack(rank(events).items, { name: '梦尘' })
-  assert.ok(p.chars <= 700, `默认上限应该是 700，实际 ${p.chars}`)
+  // 0.10.2 起：900 字、边界 5 条、判断 3 条，另加疤/立场各 2 条
+  assert.ok(p.chars <= 900, `默认上限应该是 900，实际 ${p.chars}`)
   assert.equal(p.thin, true)
-  // 边界最多 4 条
   const boundaries = p.picked.filter((x) => x.cls === 'boundary')
-  assert.ok(boundaries.length <= 4)
-  // 判断最多 2 条
+  assert.ok(boundaries.length <= 5)
   const beliefs = p.picked.filter((x) => x.cls === 'belief')
-  assert.ok(beliefs.length <= 2)
+  assert.ok(beliefs.length <= 3)
   // 日记与关系不进
   assert.equal(p.body.includes('今天有点累'), false)
   assert.equal(p.body.includes('你回来的时候'), false)
@@ -149,4 +148,50 @@ test('0/0：一条都不带时不留悬空的「下面这些」', () => {
   assert.equal(p.picked.length, 0)
   assert.equal(/下面这些是她活过的/.test(p.body), false)
   assert.match(p.body, /你刚开始存在/)
+})
+
+test('疤与立场会进包：孩子继承的不是结论，是"她怎么变的"', () => {
+  const items = [
+    { cls: 'boundary', text: '我不做这个，说什么也不做' },
+    { cls: 'scar', text: '她拒绝过「我不做这个，说什么也不做」，后来改成了「我不做这个了，其实也行」' },
+    { cls: 'stance', text: '她说过不止一次：我不喜欢被安排' },
+    { cls: 'belief', text: '我宁可说得难听' },
+  ]
+  const p = composePack(items, { name: '梦尘' })
+  assert.match(p.body, /## 她栽过的跟头/)
+  assert.match(p.body, /后来改成了/)
+  assert.match(p.body, /## 她反复说过的事/)
+  assert.match(p.body, /说过不止一次/)
+  assert.ok(p.chars <= 900)
+})
+
+test('疤/立场/日记都能关掉或限量', () => {
+  const items = (n) => [
+    ...Array.from({ length: n }, (_, i) => ({ cls: 'scar', text: `她拒绝过「X${i}」，后来改成了「Y${i}」` })),
+    ...Array.from({ length: n }, (_, i) => ({ cls: 'stance', text: `她说过不止一次：A${i}` })),
+    { cls: 'diary', text: '今天有点累' },
+  ]
+  const none = composePack(items(3), { maxScars: 0, maxStances: 0 })
+  assert.equal(none.body.includes('她栽过的跟头'), false)
+  assert.equal(none.body.includes('她反复说过的事'), false)
+
+  const two = composePack(items(5), { maxScars: 2, maxStances: 2 })
+  assert.ok(two.picked.filter((x) => x.cls === 'scar').length <= 2)
+  assert.ok(two.picked.filter((x) => x.cls === 'stance').length <= 2)
+
+  // 日记默认不进，显式打开才进
+  assert.equal(none.body.includes('今天有点累'), false)
+  const withDiary = composePack(items(1), { includeDiary: true })
+  assert.match(withDiary.body, /## 她写给自己的一句话/)
+})
+
+test('条数再多也不越字数上限', () => {
+  const many = []
+  for (let i = 0; i < 30; i++) {
+    many.push({ cls: 'boundary', text: `我不做第${i}件事，说什么也不做，这件事我想了很久` })
+    many.push({ cls: 'belief', text: `我认定第${i}件事，而且不会改` })
+  }
+  const p = composePack(many, { maxChars: 400 })
+  assert.ok(p.chars <= 400, `实际 ${p.chars}`)
+  assert.ok(p.picked.length > 0)
 })

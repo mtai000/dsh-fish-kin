@@ -308,3 +308,33 @@ test('环境参数：边界/判断条数也走白名单，且被夹在 0–12', 
     assert.ok(pre.pack.picked.filter((x) => x.cls === 'belief').length <= 0)
   })
 })
+
+test('遗传包带疤与立场：拒绝过又松口、同一件事说过多次', async () => {
+  await withTemp(async (dir) => {
+    const parentRoot = join(dir, 'parent')
+    const kinRoot = join(dir, 'kin')
+    const refusal = ev('refusal', '我不做这个，说什么也不做', { day: 2 })
+    const events = [
+      ev('seed', '你不是助手。你刚开始存在。'),
+      refusal,
+      ev('revise', '我不做这个了，其实也行', { day: 20, refs: [refusal.id] }),
+      ev('utterance', '我不喜欢被安排', { day: 3 }),
+      ev('utterance', '我不喜欢被安排。', { day: 30 }),
+    ]
+    await writeParent(parentRoot, events)
+    await mkdir(kinRoot, { recursive: true })
+
+    const p = await svc.preview({ parentRoot, kinRoot })
+    assert.equal(p.ok, true, p.why)
+    assert.match(p.pack.body, /## 她栽过的跟头/, p.pack.body)
+    assert.match(p.pack.body, /后来改成了/)
+    assert.match(p.pack.body, /## 她反复说过的事/)
+    assert.ok(p.pack.chars <= 900, `实际 ${p.pack.chars}`)
+
+    // 关掉疤：配置值要真的生效
+    await writeFile(join(kinRoot, 'config.json'), JSON.stringify({ birth: { maxScars: 0, maxStances: 0 } }), 'utf8')
+    const p2 = await svc.preview({ parentRoot, kinRoot })
+    assert.equal(p2.pack.body.includes('她栽过的跟头'), false)
+    assert.equal(p2.pack.body.includes('她反复说过的事'), false)
+  })
+})

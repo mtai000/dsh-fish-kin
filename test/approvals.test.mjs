@@ -20,7 +20,7 @@ test('立单 / 列出来 / 过期', async () => {
     const a = await createApproval(root, { kind: 'bili-comment', title: '在 BV1 下留一句', detail: '一句', payload: { bvid: 'BV1', text: '一句' }, now })
     assert.equal(a.ok, true)
     assert.match(a.approval.id, /^ap_[0-9A-Za-z]+$/)
-    assert.deepEqual([...KINDS].sort(), ['bili-comment', 'bili-reply', 'bili-scroll'])
+    assert.deepEqual([...KINDS].sort(), ['bili-comment', 'bili-dm', 'bili-reply', 'bili-scroll'])
 
     const { pending } = await listApprovals(root, { now })
     assert.equal(pending.length, 1)

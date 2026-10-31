@@ -389,9 +389,10 @@ pnpm add file:D:/dsh/dsh-fish-kin      # 或在 profile 的 package.json 里加�
   "pressure": { "events": 1200, "chars": 400000 },
   "birth": {
     "inheritName": true, "inheritTools": true, "notifyParent": true,
-    "maxPackChars": 700, "maxItems": 24,
+    "maxPackChars": 900, "maxItems": 24,
     "inheritBeliefs": true, "seedMode": "thin",
-    "maxBoundaries": 4, "maxBeliefs": 2
+    "maxBoundaries": 5, "maxBeliefs": 3,
+    "maxScars": 2, "maxStances": 2, "includeDiary": false
   },
   "auto": { "propose": false, "cooldownEvents": 200 },
   "presence": { "detail": "memory" },
@@ -447,7 +448,7 @@ children/kin_xxx/
 
 不是摘要，是**清单**——只陈述发生过什么，不写她是什么样的人。
 
-**默认只留两节**：她拒绝过的事（最多 4 条）+ 她认定过的事（最多 2 条），加一句称呼。
+**默认留四节**：她拒绝过的事（≤5）+ 她栽过的跟头（≤2）+ 她反复说过的事（≤2）+ 她认定过的事（≤3），加一句称呼；日记默认不带（`includeDiary` 才进）。
 日记、你对她说过的话、重聚这些「经历」不进 seed——它们是**那天发生的事**，不是起点。
 
 ```
@@ -468,7 +469,7 @@ children/kin_xxx/
 为什么压到这么薄（2026-10-31 用户拍板「要有点独立性，但会像她」）：
 dsh-fish 的 seed 是每轮**必现**的「你是谁」段。塞满 1500 字，等于把妈妈的一辈子
 印在孩子的脸上——实测能占到身份文档 94%，她自己长出来的判断/疤/立场只剩一成位置。
-压到 700 之后，一半是「妈妈留下的边界」，一半留给**她自己**。
+压到 900 之后，一半是「妈妈留下的边界」，一半留给**她自己**。
 
 **「妈妈的影子有多重」就是这两个数**：`maxBoundaries` 是最多抄几条她「拒绝过的事」，
 `maxBeliefs` 是最多抄几条她「认定过的事」。

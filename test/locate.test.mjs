@@ -50,7 +50,8 @@ test('坏指针文件当成没迁过，不抛', async () => {
 
 test('产房目录与母代分居', async () => {
   await withTemp(async (home) => {
-    assert.equal(kinRoot({ env: {}, home }), join(home, '.dsh-fish-kin'))
+    // 0.12.0 起：产房 = 家族工作区（默认 <home>/大肥鱼家族，旧目录存在则沿用）
+    assert.equal(kinRoot({ env: {}, home }), join(home, '大肥鱼家族'))
     assert.equal(kinRoot({ env: { DSH_FISH_KIN_HOME: join(home, 'k') }, home }), join(home, 'k'))
     assert.notEqual(kinRoot({ env: {}, home }), parentRoot({ env: {}, home }))
   })

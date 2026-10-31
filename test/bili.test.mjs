@@ -163,7 +163,7 @@ test('她的工具：参数里有 search 和 comment', async () => {
     const ctx = { tools: { register: (s) => { specs.push(s); return () => {} } } }
     registerBiliTool(ctx, { root, log: () => {} })
     const en = specs[0].parameters.properties.action.enum
-    assert.deepEqual([...en].sort(), ['comment', 'look', 'popular', 'reply', 'scroll', 'search', 'watch'])
+    assert.deepEqual([...en].sort(), ['comment', 'dm', 'look', 'popular', 'reply', 'scroll', 'search', 'watch'])
   })
 })
 
