@@ -203,3 +203,21 @@ test('任何叫「大肥鱼的家」的目录都算她在家（用户自己建�
   // 她自己的屋子仍然是
   assert.equal(at(join(root, '大肥鱼的家')), true)
 })
+
+test('删掉串门后，老 workspaces 不许把它"复活"', async () => {
+  const { saveConfig, loadConfig } = await import('../lib/fish/wake.js')
+  const { readFile } = await import('node:fs/promises')
+  const base = await mkdtemp(join(tmpdir(), 'kin-legacy-'))
+  const root = join(base, 'fish')
+  await mkdir(root, { recursive: true })
+  // 老配置：只有 workspaces
+  await writeFile(join(root, 'config.json'), JSON.stringify({ workspaces: [join(base, 'old-proj')] }), 'utf8')
+  assert.equal((await loadConfig(root)).visits.length, 1, '兼容：老的 workspaces 当作串门读')
+
+  // 用户点了"不让去"
+  await saveConfig({ visits: [] }, root)
+  assert.equal((await loadConfig(root)).visits.length, 0, '删掉就不该复活')
+
+  const raw = JSON.parse(await readFile(join(root, 'config.json'), 'utf8'))
+  assert.equal(raw.workspaces, undefined, '老字段应从文件里清掉')
+})

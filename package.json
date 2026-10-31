@@ -1,6 +1,6 @@
 {
   "name": "dsh-fish-kin",
-  "version": "0.27.0",
+  "version": "0.27.1",
   "description": "大肥鱼子代传承 + 自己的鱼：事件格式与运行时都是自己的，不再依赖 dsh-fish（旧档可一次性搬入）。",
   "type": "module",
   "main": "lib/index.js",
