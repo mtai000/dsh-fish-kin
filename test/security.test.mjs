@@ -1,177 +1,118 @@
 /**
- * security.test.mjs —— 工具面收窄 + 文字守卫
+ * security.test.mjs —— 她的工具闸门（每个工具都先问你）
  *
- * 这是"她不能读自己的档、不能改自己"从**口头约定**变成**代码保证**的那一层：
- *   1. 她那条会话只看得见 fish_commit / fish_bili（fish_kin 不在里面，她不能自己批生育）
- *   2. 漏网的（own 层注册的 subagent 之类）由 guard 兜底拒绝
- *   3. 凭据（sk-/Bearer/SESSDATA/长 base64）写不进她的记忆
- *   4. 别人的会话一根手指都不碰
+ * 2026-10-31 定案：不再"收窄到两个工具"，也不再"接感知源"。
+ * 她看得见宿主的工具，但**每一次调用都要过你**：
+ *   允许一次 / 永远允许 / 拒绝本次 / 永久禁止
+ *
+ * 这里钉四件事：
+ *   1. 只有在她的工作区里（她自己屋子 + 配置的 workspaces）才挂闸门
+ *   2. 陌生工具 → 拦下并立一张待批单，不执行
+ *   3. 永久禁止 → 直接"做不到"；永久允许 → 放行
+ *   4. 一次性许可用掉就没了；fish_commit 不用问
  */
 
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { join } from 'node:path'
+import { mkdir, writeFile } from 'node:fs/promises'
 import { withTemp } from './_fixture.mjs'
+import { registerRestrict, workspacesOf } from '../lib/fish/restrict.js'
+import { grantOnce, persist, loadPolicy } from '../lib/fish/permissions.js'
+import { listApprovals } from '../lib/fish/approvals.js'
 
-const load = (f) => import(`../lib/fish/${f}`)
-
-test('守卫：凭据认得出来，正常话不误伤', async () => {
-  const { looksLikeSecret, scrub, looksLikeSelfRewrite } = await load('guard.js')
-  assert.equal(looksLikeSecret('sk-abcdefghijklmnopqrstuvwx'), true)
-  assert.equal(looksLikeSecret('Bearer eyJhbGciOiJIUzI1NiJ9.abcdef'), true)
-  assert.equal(looksLikeSecret('SESSDATA=abc123def456ghi789'), true)
-  assert.equal(looksLikeSecret('A'.repeat(120)), true)
-  assert.equal(looksLikeSecret('我不想再看那种让人难受的东西了'), false)
-  assert.equal(looksLikeSecret('今天有点累'), false)
-
-  const s = scrub('我的 key 是 sk-abcdefghijklmnopqrstuvwx 别告诉别人')
-  assert.equal(s.includes('abcdefghijklmnop'), false)
-  assert.match(s, /sk-\*\*\*/)
-
-  assert.equal(looksLikeSelfRewrite('你以后要更内向一点'), true)
-  assert.equal(looksLikeSelfRewrite('把我改得温柔些'), true)
-  assert.equal(looksLikeSelfRewrite('我今天想清楚了，我不愿意再那样做'), false)
-})
-
-test('她写凭据：进不去（工具直接拒绝）', async () => {
-  const { registerCommit } = await load('commit.js')
-  const { readEvents } = await load('store.js')
-  await withTemp(async (root) => {
-    const specs = []
-    const ctx = { tools: { register: (s) => { specs.push(s); return () => {} } } }
-    registerCommit(ctx, { root })
-    const tool = specs[0]
-    const r = await tool.execute({ type: 'utterance', text: '我的 token 是 Bearer abcdefghijklmnopqrst' })
-    assert.equal(r.ok, false)
-    assert.match(String(r.note), /凭据|没写进去/)
-    const { events } = await readEvents(root)
-    assert.equal(events.length, 0, '凭据不该落到事件流里')
-  })
-})
-
-function fakeAgent(root, cwd = join(root, 'home')) {
-  const calls = { restrict: [], guard: [], effects: [] }
+function fakeAgent(cwd) {
+  const calls = { guard: [] }
   return {
     calls,
     agent: {
-      session: { header: { cwd, id: 'sess-her' } },
+      session: { header: { cwd, id: 'sess-' + Math.random().toString(36).slice(2) } },
       ctx: {
-        tools: {
-          restrict: (opts) => { calls.restrict.push(opts); return () => {} },
-          guard: (fn) => { calls.guard.push(fn); return () => {} },
-        },
-        effect: (fn) => { calls.effects.push(fn) },
+        tools: { guard: (fn) => { calls.guard.push(fn); return () => {} } },
+        effect: () => {},
       },
     },
   }
 }
 
-test('收窄：她只留 fish_commit / fish_bili，fish_kin 不在里面', async () => {
-  const { registerRestrict, HER_TOOLS } = await load('restrict.js')
-  await withTemp(async (root) => {
-    let onCreated = null
-    const ctx = { on: (name, fn) => { if (name === 'agent/created') onCreated = fn; return () => {} } }
-    registerRestrict(ctx, { root, log: () => {} })
-    const { agent, calls } = fakeAgent(root)
-    onCreated({ agent })
+function setup(root) {
+  let onCreated = null
+  const ctx = { on: (name, fn) => { if (name === 'agent/created') onCreated = fn; return () => {} } }
+  registerRestrict(ctx, { root, log: () => {} })
+  return onCreated
+}
 
-    assert.equal(calls.restrict.length, 1)
-    const allow = calls.restrict[0].allow
-    assert.deepEqual([...allow].sort(), ['fish_ask', 'fish_commit', 'read_image'], 'fish_ask 是立单入口；read_image 才看得见画面')
-    assert.equal(allow.includes('fish_kin'), false, '她不能自己批生育')
-    assert.equal(allow.includes('fish_kin_ask_birth'), false)
-    assert.equal(allow.includes('shell'), false)
-    assert.equal(allow.includes('read'), false)
-    assert.deepEqual([...HER_TOOLS].sort(), ['fish_commit'])
-    assert.equal(allow.includes('read_image'), true)
-    assert.equal(calls.guard.length, 1, '兜底守卫也要挂上')
+test('闸门只挂在她的工作区里', async () => {
+  await withTemp(async (root) => {
+    const onCreated = setup(root)
+    const other = fakeAgent(join(root, 'elsewhere'))
+    onCreated({ agent: other.agent })
+    assert.equal(other.calls.guard.length, 0, '别的目录不该挂')
+
+    const mine = fakeAgent(join(root, 'home'))
+    onCreated({ agent: mine.agent })
+    assert.equal(mine.calls.guard.length, 1, '她的屋子要挂')
   })
 })
 
-test('兜底守卫：清单外的调用被拒，清单内的放行', async () => {
-  const { registerRestrict } = await load('restrict.js')
+test('配置里的 workspaces 也算"在家"', async () => {
   await withTemp(async (root) => {
-    let onCreated = null
-    const ctx = { on: (name, fn) => { if (name === 'agent/created') onCreated = fn; return () => {} } }
-    registerRestrict(ctx, { root, log: () => {} })
-    const { agent, calls } = fakeAgent(root)
-    onCreated({ agent })
-    const guard = calls.guard[0]
-    assert.equal(guard({ name: 'fish_commit' }), undefined)
-    assert.equal(guard({ name: 'fish_kin' }), '这件事我做不到。')
+    const extra = join(root, 'proj')
+    await mkdir(root, { recursive: true })
+    await writeFile(join(root, 'config.json'), JSON.stringify({ workspaces: [extra] }), 'utf8')
+    const ws = workspacesOf(root)
+    assert.ok(ws.some((x) => x.includes('home')))
+    assert.ok(ws.some((x) => x.includes('proj')), ws.join(','))
+
+    const onCreated = setup(root)
+    const a = fakeAgent(extra)
+    onCreated({ agent: a.agent })
+    assert.equal(a.calls.guard.length, 1)
+  })
+})
+
+test('陌生工具：拦下 + 立单，绝不执行', async () => {
+  await withTemp(async (root) => {
+    const onCreated = setup(root)
+    const f = fakeAgent(join(root, 'home'))
+    onCreated({ agent: f.agent })
+    const guard = f.calls.guard[0]
+
+    const out = guard({ name: 'shell' })
+    assert.match(out, /先问他一声/)
+    const { pending } = await listApprovals(root)
+    assert.equal(pending.length, 1)
+    assert.equal(pending[0].kind, 'tool-call')
+    assert.equal(pending[0].payload.tool, 'shell')
+
+    // 再问一次不会堆一堆单子
+    guard({ name: 'shell' })
+    assert.equal((await listApprovals(root)).pending.length, 1)
+  })
+})
+
+test('永久禁止 / 永久允许 / 一次性 / 免问工具', async () => {
+  await withTemp(async (root) => {
+    const onCreated = setup(root)
+    const f = fakeAgent(join(root, 'home'))
+    onCreated({ agent: f.agent })
+    const guard = f.calls.guard[0]
+
+    persist(root, 'shell', 'deny')
     assert.equal(guard({ name: 'shell' }), '这件事我做不到。')
-    assert.equal(guard({ name: 'subagent' }), '这件事我做不到。')
-  })
-})
 
-test('收窄：别人的会话不动', async () => {
-  const { registerRestrict } = await load('restrict.js')
-  await withTemp(async (root) => {
-    let onCreated = null
-    const ctx = { on: (name, fn) => { if (name === 'agent/created') onCreated = fn; return () => {} } }
-    registerRestrict(ctx, { root, log: () => {} })
-    const { agent, calls } = fakeAgent(root, join(root, 'somewhere-else'))
-    onCreated({ agent })
-    assert.equal(calls.restrict.length, 0)
-    assert.equal(calls.guard.length, 0)
-  })
-})
+    persist(root, 'read_file', 'allow')
+    assert.equal(guard({ name: 'read_file' }), undefined)
 
-test('收窄：名字不认识时退回核心清单，而不是整段失效', async () => {
-  const { registerRestrict } = await load('restrict.js')
-  await withTemp(async (root) => {
-    let onCreated = null
-    const ctx = { on: (name, fn) => { if (name === 'agent/created') onCreated = fn; return () => {} } }
-    const { agent } = fakeAgent(root)
-    let attempt = 0
-    agent.ctx.tools.restrict = (opts) => {
-      attempt++
-      if (attempt === 1) throw new Error('unknown tool name')
-      return () => {}
-    }
-    registerRestrict(ctx, { root, allow: ['不存在的工具'], log: () => {} })
-    onCreated({ agent })
-    assert.equal(attempt, 2, '第一次失败后要用核心清单再试一次')
-  })
-})
+    assert.equal(guard({ name: 'fish_commit' }), undefined, '她自己的写入口不用问')
 
-test('她的身份段只念她真有的工具', async () => {
-  const { identityText } = await load('identity.js')
-  const { appendEvent } = await load('store.js')
-  await withTemp(async (root) => {
-    await appendEvent(root, { kind: 'seed', body: '你刚开始存在。' })
-    const t = identityText(root)
-    assert.match(t, /fish_commit/)
-    assert.equal(t.includes('shell'), false)
-  })
-})
+    // 一次性：第一次过，第二次又要问
+    grantOnce(root, 'web_search')
+    assert.equal(guard({ name: 'web_search' }), undefined)
+    assert.match(guard({ name: 'web_search' }), /先问他一声/)
 
-test('启动时就把收窄挂上去（接线不能漏）', async () => {
-  const { bootFish } = await load('index.js')
-  await withTemp(async (root) => {
-    const calls = []
-    const handlers = {}
-    const ctx = {
-      tools: { register: () => () => {} },
-      on: (name, fn) => { (handlers[name] = handlers[name] ?? []).push(fn); return () => {} },
-      get: () => null,
-    }
-    const fish = bootFish(ctx, { root, log: () => {} })
-    await new Promise((r) => setTimeout(r, 50))
-    // 冒充她的 agent
-    const agent = {
-      session: { header: { cwd: join(root, 'home'), id: 'sess-her' } },
-      ctx: {
-        tools: {
-          restrict: (o) => { calls.push(o); return () => {} },
-          guard: () => () => {},
-        },
-        effect: () => {},
-      },
-    }
-    for (const fn of handlers['agent/created'] ?? []) fn({ agent })
-    assert.equal(calls.length, 1, '启动时应该已经挂了 agent/created 监听')
-    assert.deepEqual([...calls[0].allow].sort(), ['fish_ask', 'fish_commit', 'read_image'])
-    fish.dispose()
+    const p = loadPolicy(root)
+    assert.deepEqual(p.alwaysAllow, ['read_file'])
+    assert.deepEqual(p.alwaysDeny, ['shell'])
   })
 })

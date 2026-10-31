@@ -196,39 +196,32 @@ test('她那把「跟孩子说一句」：没孩子/有孩子都给一句人话�
   })
 })
 
-test('她要做外部世界的动作：列单子 → 批准 → 发通行证', async () => {
-  const { createApproval, listApprovals } = await import('../lib/fish/approvals.js')
-  const { findGrantSync } = await import('../lib/perception/grants.js')
+test('她要问你用工具：列单子 → 批准一次 → 权限生效', async () => {
+  const { createApproval } = await import('../lib/fish/approvals.js')
+  const { loadPolicy } = await import('../lib/fish/permissions.js')
   await withTemp(async (dir) => {
     const parentRoot = join(dir, 'parent')
     const kinRoot = join(dir, 'kin')
     const specs = []
     const ctx = {
       tools: { register: (s) => { specs.push(s); return () => {} } },
-      get: (k) => (k === 'sessionController' ? {
-        async list() { return [{ sessionId: 's1' }] },
-        async create() { return { sessionId: 's1' } },
-        async rename() {},
-        async prompt() {},
-      } : null),
+      get: () => null,
     }
     registerKinTools(ctx, { parentRoot, kinRoot })
     const kin = specs.find((s) => s.name === 'fish_kin')
 
-    const made = await createApproval(parentRoot, { kind: 'source-act', title: '看 B 站：say', payload: { source: 'bili', tool: 'say', args: {} } })
+    const made = await createApproval(parentRoot, { kind: 'tool-call', title: '想用 shell', payload: { tool: 'shell' } })
     const list = await kin.execute({ action: 'approvals' })
-    assert.equal(list.ok, true)
     assert.match(list.text, /等你点头/)
-    assert.ok(list.text.includes(made.approval.id))
 
     const ap = await kin.execute({ action: 'approve', id: made.approval.id })
     assert.equal(ap.ok, true, ap.text)
-    assert.match(ap.text, /通行证/)
-    assert.ok(findGrantSync(parentRoot, 'say'))
+    assert.match(ap.text, /允许一次/)
+    assert.ok(loadPolicy(parentRoot).once.shell > Date.now())
 
-    // 行动单不会被 consume（守卫还要用它）
-    const after = await listApprovals(parentRoot)
-    assert.equal(after.pending.length, 1)
+    const always = await kin.execute({ action: 'allow-always', tool: 'read_file' })
+    assert.equal(always.ok, true)
+    assert.deepEqual(loadPolicy(parentRoot).alwaysAllow, ['read_file'])
   })
 })
 test('她自己不能批自己的单子（工具面里没有 fish_kin）', async () => {

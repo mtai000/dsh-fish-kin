@@ -250,51 +250,40 @@ test('让她亲口说一句：POST /api/teach/spoken 走通（假的 sessionCont
   })
 })
 
-test('待批准：GET 列表；批 id 不对时 400', async () => {
+
+test('许可接口：列待批 / 决定 / 策略 / 撤销', async () => {
   await withTemp(async (dir) => {
     const h = await harness(dir)
+    const root = join(dir, 'parent')
+    const { createApproval } = await import('../lib/fish/approvals.js')
+    const a = await createApproval(root, { kind: 'tool-call', title: '想用 shell', payload: { tool: 'shell' } })
+
     const list = JSON.parse((await h.call('GET', '/api/approvals')).body)
     assert.equal(list.ok, true)
-    assert.deepEqual(list.pending, [])
+    assert.equal(list.pending.length, 1)
 
-    const bad = await h.call('POST', '/api/approvals/approve', { id: 'xx' })
+    const bad = await h.call('POST', '/api/approvals/decide', { id: a.approval.id, action: 'nope' })
     assert.equal(bad.code, 400)
+
+    const once = JSON.parse((await h.call('POST', '/api/approvals/decide', { id: a.approval.id, action: 'allow-once' })).body)
+    assert.equal(once.ok, true)
+    assert.equal(once.tool, 'shell')
+
+    const pol = JSON.parse((await h.call('GET', '/api/permissions')).body)
+    assert.ok(pol.once.shell > Date.now())
+
+    const forgot = JSON.parse((await h.call('POST', '/api/permissions/forget', { tool: 'shell' })).body)
+    assert.equal(forgot.ok, true)
+    assert.ok(!forgot.once.shell)
   })
 })
 
-test('感知源接口：列出 / 接上 / 停用 / 断开', async () => {
+test('工作区接口：读得到"在家"目录', async () => {
   await withTemp(async (dir) => {
     const h = await harness(dir)
-    const empty = JSON.parse((await h.call('GET', '/api/sources')).body)
-    assert.equal(empty.ok, true)
-    assert.deepEqual(empty.sources, [])
-
-    const linked = JSON.parse((await h.call('POST', '/api/sources', {
-      id: 'cdda', title: '去游戏里走走', read: 'observe_game', act: 'move', budget: 1,
-    })).body)
-    assert.equal(linked.ok, true, linked.why)
-
-    const listed = JSON.parse((await h.call('GET', '/api/sources')).body)
-    assert.equal(listed.sources.length, 1)
-    assert.equal(listed.sources[0].id, 'cdda')
-    assert.equal(listed.sources[0].adapter, 'external')
-
-    await h.call('POST', '/api/sources/toggle', { id: 'cdda', enabled: false })
-    const off = JSON.parse((await h.call('GET', '/api/sources')).body)
-    assert.equal(off.sources[0].enabled, false)
-
-    await h.call('POST', '/api/sources/remove', { id: 'cdda' })
-    const gone = JSON.parse((await h.call('GET', '/api/sources')).body)
-    assert.equal(gone.sources.length, 0)
-  })
-})
-
-test('环境参数接口：读得到（B 站配置已移除）', async () => {
-  await withTemp(async (dir) => {
-    const h = await harness(dir)
-    const r = JSON.parse((await h.call('GET', '/api/fish-config')).body)
+    const r = JSON.parse((await h.call('GET', '/api/workspaces')).body)
     assert.equal(r.ok, true)
-    assert.equal(r.config.bili, undefined, '内建 B 站配置已删掉')
-    assert.ok(r.config.perception, '感知源还在')
+    assert.ok(Array.isArray(r.effective))
+    assert.ok(r.effective.some((x) => String(x).includes('home')))
   })
 })
