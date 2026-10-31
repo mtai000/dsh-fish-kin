@@ -221,3 +221,35 @@ test('删掉串门后，老 workspaces 不许把它"复活"', async () => {
   const raw = JSON.parse(await readFile(join(root, 'config.json'), 'utf8'))
   assert.equal(raw.workspaces, undefined, '老字段应从文件里清掉')
 })
+
+test('删掉串门后，下一条消息就不再是人设（不用重启）', async () => {
+  const { registerIdentity } = await import('../lib/fish/identity.js')
+  const { saveConfig } = await import('../lib/fish/wake.js')
+  const { normPath } = await import('../lib/text.js')
+  const base = await mkdtemp(join(tmpdir(), 'kin-live-'))
+  const root = join(base, 'fish')
+  const guest = join(base, 'guest')
+  await mkdir(root, { recursive: true })
+  await mkdir(guest, { recursive: true })
+  await writeFile(join(root, 'config.json'), JSON.stringify({ visits: [guest] }), 'utf8')
+  // 没播种时 identityText 会返回空串（她还没开始存在），先种一句
+  const { appendEvent } = await import('../lib/fish/store.js')
+  await appendEvent(root, { kind: 'seed', body: '你刚开始存在。' })
+
+  const sections = []
+  let onCreated = null
+  const ctx = { on: (n, fn) => { if (n === 'agent/created') onCreated = fn; return () => {} } }
+  registerIdentity(ctx, { root, normPath, log: () => {} })
+  onCreated({
+    agent: {
+      session: { header: { cwd: guest, id: 's1' } },
+      ctx: { systemPrompt: { section: (spec) => sections.push(spec) } },
+    },
+  })
+  assert.equal(sections.length, 1)
+  assert.match(sections[0].text(), /## 你是谁/, '在串门目录里她是她')
+
+  // 用户点"不让去"
+  await saveConfig({ visits: [] }, root)
+  assert.equal(sections[0].text(), '', '删掉之后下一条消息就不带人设了')
+})
