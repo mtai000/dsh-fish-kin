@@ -250,25 +250,6 @@ test('让她亲口说一句：POST /api/teach/spoken 走通（假的 sessionCont
   })
 })
 
-test('她自己的环境参数：GET 读、POST 写（设置页用）', async () => {
-  await withTemp(async (dir) => {
-    const h = await harness(dir)
-    const got = JSON.parse((await h.call('GET', '/api/fish-config')).body)
-    assert.equal(got.ok, true)
-    assert.equal(got.config.bili.scrollPerDay, 1)
-
-    const saved = JSON.parse((await h.call('POST', '/api/fish-config', {
-      patch: { bili: { scrollPerDay: 3, interests: ['人工智能'] } },
-    })).body)
-    assert.equal(saved.ok, true)
-    assert.equal(saved.config.bili.scrollPerDay, 3)
-    assert.deepEqual(saved.config.bili.interests, ['人工智能'])
-
-    const again = JSON.parse((await h.call('GET', '/api/fish-config')).body)
-    assert.equal(again.config.bili.scrollPerDay, 3)
-  })
-})
-
 test('待批准：GET 列表；批 id 不对时 400', async () => {
   await withTemp(async (dir) => {
     const h = await harness(dir)
@@ -278,46 +259,6 @@ test('待批准：GET 列表；批 id 不对时 400', async () => {
 
     const bad = await h.call('POST', '/api/approvals/approve', { id: 'xx' })
     assert.equal(bad.code, 400)
-  })
-})
-
-test('登录状态：没登录时 logged=false，cookie 不外泄', async () => {
-  await withTemp(async (dir) => {
-    const h = await harness(dir)
-    const r = JSON.parse((await h.call('GET', '/api/owner')).body)
-    assert.equal(r.ok, true)
-    assert.equal(r.logged, false)
-    assert.equal(r.cookie, '')
-  })
-})
-
-test('叫醒她：fish 不在时明确 503，不假装成功', async () => {
-  await withTemp(async (dir) => {
-    const h = await harness(dir)
-    const r = await h.call('POST', '/api/fish/wake', {})
-    assert.equal(r.code, 503)
-    assert.match(JSON.parse(r.body).why, /她现在不在/)
-  })
-})
-
-test('报告接口：今天什么都没做也有一句人话', async () => {
-  await withTemp(async (dir) => {
-    const h = await harness(dir)
-    const r = JSON.parse((await h.call('GET', '/api/fish/report')).body)
-    assert.equal(r.ok, true)
-    assert.match(r.text, /她今天在 B 站/)
-    assert.match(r.text, /今天还什么都没做|看过画面/)
-  })
-})
-
-test('谷时状态接口：给出北京时间与是否谷时', async () => {
-  await withTemp(async (dir) => {
-    const h = await harness(dir)
-    const r = JSON.parse((await h.call('GET', '/api/fish/offpeak')).body)
-    assert.equal(r.ok, true)
-    assert.match(r.text, /北京时间/)
-    assert.equal(typeof r.off, 'boolean')
-    assert.equal(r.mode, 'propose')
   })
 })
 
@@ -345,5 +286,15 @@ test('感知源接口：列出 / 接上 / 停用 / 断开', async () => {
     await h.call('POST', '/api/sources/remove', { id: 'cdda' })
     const gone = JSON.parse((await h.call('GET', '/api/sources')).body)
     assert.equal(gone.sources.length, 0)
+  })
+})
+
+test('环境参数接口：读得到（B 站配置已移除）', async () => {
+  await withTemp(async (dir) => {
+    const h = await harness(dir)
+    const r = JSON.parse((await h.call('GET', '/api/fish-config')).body)
+    assert.equal(r.ok, true)
+    assert.equal(r.config.bili, undefined, '内建 B 站配置已删掉')
+    assert.ok(r.config.perception, '感知源还在')
   })
 })

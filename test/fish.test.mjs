@@ -183,39 +183,6 @@ test('唤醒：到点才叫，叫过就记下来', async () => {
   })
 })
 
-test('B站：串行调用、风控熔断、永不抛（假 fetch）', async () => {
-  const { createBiliClient } = await import('../lib/perception/sources/bili/bili.js')
-  const calls = []
-  const fetchImpl = async (url) => {
-    calls.push(url)
-    if (String(url).includes('finger/spi')) {
-      return { json: async () => ({ data: { b_3: 'b3', b_4: 'b4' } }), text: async () => '{}', status: 200 }
-    }
-    if (String(url).includes('/x/web-interface/popular')) {
-      return {
-        status: 200,
-        json: async () => ({}),
-        text: async () => JSON.stringify({ code: 0, data: { list: [{ bvid: 'BV1xx', title: '标题', owner: { name: 'UP' }, stat: { view: 10 }, duration: 5 }] } }),
-      }
-    }
-    return { status: 200, json: async () => ({}), text: async () => JSON.stringify({ code: -412, message: '请求被拦截' }) }
-  }
-  const c = createBiliClient({ fetchImpl, minIntervalMs: 0, jitterMs: 0 })
-  const pop = await c.popular(3)
-  assert.equal(pop.ok, true)
-  assert.equal(pop.data[0].title, '标题')
-  assert.equal(pop.data[0].bvid, 'BV1xx')
-
-  const bad = await c.view('BVbad')
-  assert.equal(bad.ok, false)
-  assert.equal(bad.code, -412)
-  assert.equal(c.cooling(), true, '风控之后应该进冷却')
-
-  const blocked = await c.popular(1)
-  assert.equal(blocked.ok, false)
-  assert.equal(blocked.code, 'COOLDOWN')
-})
-
 test('刚出生被叫醒：不提"上次说话"（还没说过）', async () => {
   const { wakeText } = await load('wake.js')
   const t = wakeText({ day: 1, beliefCount: 0, lastAt: new Date().toISOString() }, { lastAt: '' })

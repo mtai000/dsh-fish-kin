@@ -78,10 +78,6 @@
     <div id="recent"></div>
   </div>
 
-  <div class="card">
-    <h2>B 站</h2>
-    <div id="bili"></div>
-  </div>
 </div>
 
 <script>
@@ -148,7 +144,7 @@ async function load() {
   $('wake').innerHTML =
     '<p class="stat">' + (c.wake && c.wake.enabled ? '<span class="badge ok">开着</span>' : '<span class="badge bad">关着</span>') +
     ' 每天 ' + ((c.wake && c.wake.perDay) || 0) + ' 次 · 时间窗 ' + ((c.wake && c.wake.window) || []).join('–') +
-    ' · B站 ' + (c.bili && c.bili.enabled ? '开' : '关') + '</p>' +
+    '</p>' +
     '<p class="stat">会话：<span class="mono">' + esc(h.sessionId || '（还没建）') + '</span></p>' +
     ((h.wakes || []).length ? '<p class="stat">最近醒来：' + h.wakes.slice(-5).map(esc).join('、') + '</p>' : '<p class="empty">还没醒过。</p>');
 
@@ -156,11 +152,6 @@ async function load() {
     '<tr><td class="mono">' + esc(t(e.at)) + '</td><td class="k-' + esc(e.kind) + ' mono">' + esc(e.kind) + '</td><td>' + esc(e.text) + '</td></tr>').join('');
   $('recent').innerHTML = rows ? '<table><thead><tr><th>时间</th><th>类型</th><th>内容</th></tr></thead><tbody>' + rows + '</tbody></table>' : '<p class="empty">还没有事件。</p>';
 
-  const b = s.bili || [];
-  const quota = s.quota ? '<p class="stat">今天：' + esc(s.quota) + '</p>' : '';
-  $('bili').innerHTML = quota + (b.length
-    ? '<ul>' + b.map((x) => '<li><span class="mono">' + esc(t(x.at)) + '</span> ' + esc(x.text) + '</li>').join('') + '</ul>'
-    : '<p class="empty">还没看过。</p>');
 }
 
 load();

@@ -77,12 +77,12 @@ test('收窄：她只留 fish_commit / fish_bili，fish_kin 不在里面', async
 
     assert.equal(calls.restrict.length, 1)
     const allow = calls.restrict[0].allow
-    assert.deepEqual([...allow].sort(), ['fish_ask', 'fish_bili', 'fish_commit', 'read_image'], 'fish_ask 是立单入口；read_image 才看得见画面')
+    assert.deepEqual([...allow].sort(), ['fish_ask', 'fish_commit', 'read_image'], 'fish_ask 是立单入口；read_image 才看得见画面')
     assert.equal(allow.includes('fish_kin'), false, '她不能自己批生育')
     assert.equal(allow.includes('fish_kin_ask_birth'), false)
     assert.equal(allow.includes('shell'), false)
     assert.equal(allow.includes('read'), false)
-    assert.deepEqual([...HER_TOOLS].sort(), ['fish_bili', 'fish_commit'])
+    assert.deepEqual([...HER_TOOLS].sort(), ['fish_commit'])
     assert.equal(allow.includes('read_image'), true)
     assert.equal(calls.guard.length, 1, '兜底守卫也要挂上')
   })
@@ -98,7 +98,6 @@ test('兜底守卫：清单外的调用被拒，清单内的放行', async () =>
     onCreated({ agent })
     const guard = calls.guard[0]
     assert.equal(guard({ name: 'fish_commit' }), undefined)
-    assert.equal(guard({ name: 'fish_bili' }), undefined)
     assert.equal(guard({ name: 'fish_kin' }), '这件事我做不到。')
     assert.equal(guard({ name: 'shell' }), '这件事我做不到。')
     assert.equal(guard({ name: 'subagent' }), '这件事我做不到。')
@@ -172,7 +171,7 @@ test('启动时就把收窄挂上去（接线不能漏）', async () => {
     }
     for (const fn of handlers['agent/created'] ?? []) fn({ agent })
     assert.equal(calls.length, 1, '启动时应该已经挂了 agent/created 监听')
-    assert.deepEqual([...calls[0].allow].sort(), ['fish_ask', 'fish_bili', 'fish_commit', 'read_image'])
+    assert.deepEqual([...calls[0].allow].sort(), ['fish_ask', 'fish_commit', 'read_image'])
     fish.dispose()
   })
 })

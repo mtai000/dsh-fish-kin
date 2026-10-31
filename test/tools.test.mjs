@@ -196,13 +196,12 @@ test('她那把「跟孩子说一句」：没孩子/有孩子都给一句人话�
   })
 })
 
-test('她要在 B 站做事：列单子 → 批准 → 才执行', async () => {
-  const { createApproval } = await import('../lib/fish/approvals.js')
+test('她要做外部世界的动作：列单子 → 批准 → 发通行证', async () => {
+  const { createApproval, listApprovals } = await import('../lib/fish/approvals.js')
+  const { findGrantSync } = await import('../lib/perception/grants.js')
   await withTemp(async (dir) => {
     const parentRoot = join(dir, 'parent')
     const kinRoot = join(dir, 'kin')
-    let prompted = ''
-    const prompts = []
     const specs = []
     const ctx = {
       tools: { register: (s) => { specs.push(s); return () => {} } },
@@ -210,13 +209,13 @@ test('她要在 B 站做事：列单子 → 批准 → 才执行', async () => {
         async list() { return [{ sessionId: 's1' }] },
         async create() { return { sessionId: 's1' } },
         async rename() {},
-        async prompt(req) { prompted = req.content[0].text; prompts.push(prompted) },
+        async prompt() {},
       } : null),
     }
     registerKinTools(ctx, { parentRoot, kinRoot })
     const kin = specs.find((s) => s.name === 'fish_kin')
 
-    const made = await createApproval(parentRoot, { kind: 'bili-scroll', title: '想刷一会儿', payload: {} })
+    const made = await createApproval(parentRoot, { kind: 'source-act', title: '看 B 站：say', payload: { source: 'bili', tool: 'say', args: {} } })
     const list = await kin.execute({ action: 'approvals' })
     assert.equal(list.ok, true)
     assert.match(list.text, /等你点头/)
@@ -224,14 +223,14 @@ test('她要在 B 站做事：列单子 → 批准 → 才执行', async () => {
 
     const ap = await kin.execute({ action: 'approve', id: made.approval.id })
     assert.equal(ap.ok, true, ap.text)
-    assert.match(prompts.join(''), /点头/)
+    assert.match(ap.text, /通行证/)
+    assert.ok(findGrantSync(parentRoot, 'say'))
 
-    // 批准过的单子消失了
-    const after = await kin.execute({ action: 'approvals' })
-    assert.match(after.text, /没有等你点头的事|过期/)
+    // 行动单不会被 consume（守卫还要用它）
+    const after = await listApprovals(parentRoot)
+    assert.equal(after.pending.length, 1)
   })
 })
-
 test('她自己不能批自己的单子（工具面里没有 fish_kin）', async () => {
   const { HER_TOOLS } = await import('../lib/fish/restrict.js')
   assert.equal(HER_TOOLS.includes('fish_kin'), false)

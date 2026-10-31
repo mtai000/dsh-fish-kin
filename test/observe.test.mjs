@@ -27,10 +27,9 @@ async function seed(root) {
   for (const t of distinct) await appendEvent(root, { kind: 'said', body: t })
   await appendEvent(root, { kind: 'refuse', body: '我不做这个' })
   await appendEvent(root, { kind: 'diary', body: '今天有点累' })
-  await appendEvent(root, { kind: 'note', body: 'bili-look:BV1xx411c7mD' })
 }
 
-test('状态：身份原文、记忆折叠、最近的事、B站', async () => {
+test('状态：身份原文、记忆折叠、最近的事', async () => {
   await withTemp(async (root) => {
     await seed(root)
     const s = await fishState(root, {
@@ -39,7 +38,7 @@ test('状态：身份原文、记忆折叠、最近的事、B站', async () => {
     })
     assert.equal(s.ok, true)
     assert.equal(s.day, 1)
-    assert.equal(s.counts.events, 10)
+    assert.equal(s.counts.events, 9)
     assert.equal(s.counts.beliefs, 6)
     assert.equal(s.counts.refusals, 1)
     assert.equal(s.counts.diaries, 1)
@@ -60,12 +59,11 @@ test('状态：身份原文、记忆折叠、最近的事、B站', async () => {
     assert.equal(s.guard.rejects, 1)
 
     // 最近的事是倒序，且第一条是最后写的那条
-    assert.equal(s.recent[0].kind, 'note')
+    assert.equal(s.recent[0].kind, 'diary')
     assert.ok(s.recent.length <= 20)
 
-    // B站看过什么
-    assert.equal(s.bili.length, 1)
-    assert.match(s.bili[0].text, /BV1xx411c7mD/)
+    // 内建 B 站已移除：不再有 bili 字段
+    assert.equal(s.bili, undefined)
   })
 })
 
@@ -93,7 +91,7 @@ test('观测台路由：页面 + JSON', async () => {
     assert.equal(api.code, 200)
     const json = JSON.parse(api.body)
     assert.equal(json.ok, true)
-    assert.equal(json.counts.events, 10)
+    assert.equal(json.counts.events, 9)
 
     const nope = await call(PREFIX + '/api/nope')
     assert.equal(nope.code, 404)
