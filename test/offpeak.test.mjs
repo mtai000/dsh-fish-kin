@@ -10,11 +10,11 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { withTemp } from './_fixture.mjs'
-import { isOffPeak, whyOffPeak, beijing, startOffpeakLoop, WINDOWS } from '../lib/fish/offpeak.js'
+import { isOffPeak, whyOffPeak, beijing, startOffpeakLoop, WINDOWS } from '../lib/perception/sources/bili/offpeak.js'
 import { createApproval, listApprovals } from '../lib/fish/approvals.js'
 import { appendJsonl } from '../lib/kinstore.js'
 import { approvalsLog } from '../lib/fish/approvals.js'
-import { buildReport } from '../lib/fish/report.js'
+import { buildReport } from '../lib/perception/sources/bili/report.js'
 import { appendEvent } from '../lib/fish/store.js'
 import { saveConfig } from '../lib/fish/wake.js'
 

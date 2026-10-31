@@ -13,7 +13,7 @@ import { withTemp } from './_fixture.mjs'
 import { appendJsonl } from '../lib/kinstore.js'
 import { approvalsLog, createApproval } from '../lib/fish/approvals.js'
 import { dayKey, usedToday, checkQuota, quotaLine } from '../lib/fish/quota.js'
-import { matchInterests, sortByInterests } from '../lib/fish/interests.js'
+import { matchInterests, sortByInterests } from '../lib/perception/sources/bili/interests.js'
 import { loadConfig } from '../lib/fish/wake.js'
 import { registerBiliTool } from '../lib/fish/index.js'
 

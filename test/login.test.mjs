@@ -10,8 +10,8 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFile, stat } from 'node:fs/promises'
 import { withTemp } from './_fixture.mjs'
-import { cookieFromUrl, startLogin, pollLogin } from '../lib/fish/login.js'
-import { readOwner, ownerFile } from '../lib/fish/owner.js'
+import { cookieFromUrl, startLogin, pollLogin } from '../lib/perception/sources/bili/login.js'
+import { readOwner, ownerFile } from '../lib/perception/sources/bili/owner.js'
 
 const fake = (payload, { onUrl } = {}) => async (url) => {
   if (onUrl) onUrl(String(url))

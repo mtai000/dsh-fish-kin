@@ -184,7 +184,7 @@ test('唤醒：到点才叫，叫过就记下来', async () => {
 })
 
 test('B站：串行调用、风控熔断、永不抛（假 fetch）', async () => {
-  const { createBiliClient } = await load('bili.js')
+  const { createBiliClient } = await import('../lib/perception/sources/bili/bili.js')
   const calls = []
   const fetchImpl = async (url) => {
     calls.push(url)

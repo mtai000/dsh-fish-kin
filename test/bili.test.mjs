@@ -13,7 +13,7 @@ import assert from 'node:assert/strict'
 import { stat, readFile } from 'node:fs/promises'
 import { withTemp } from './_fixture.mjs'
 
-const load = (f) => import(`../lib/fish/${f}`)
+const load = (f) => import(`../lib/perception/sources/bili/${f}`)
 
 test('凭据：写进去是 0600，读回来还是那串，摘要里打码', async () => {
   const { writeOwner, readOwner, ownerSummary, ownerFile } = await load('owner.js')
@@ -137,7 +137,7 @@ test('发评论：太长直接拒，不发请求', async () => {
 })
 
 test('她的工具：comment 只立单，不当场发（要等主人点头）', async () => {
-  const { registerBiliTool } = await load('index.js')
+  const { registerBiliTool } = await import('../lib/fish/index.js')
   await withTemp(async (root) => {
     const specs = []
     const ctx = { tools: { register: (s) => { specs.push(s); return () => {} } } }
@@ -157,7 +157,7 @@ test('她的工具：comment 只立单，不当场发（要等主人点头）', 
 })
 
 test('她的工具：参数里有 search 和 comment', async () => {
-  const { registerBiliTool } = await load('index.js')
+  const { registerBiliTool } = await import('../lib/fish/index.js')
   await withTemp(async (root) => {
     const specs = []
     const ctx = { tools: { register: (s) => { specs.push(s); return () => {} } } }

@@ -13,7 +13,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { createHash } from 'node:crypto'
-import { encode, pickVersion, toPng, toDataUrl } from '../lib/fish/qr.js'
+import { encode, pickVersion, toPng, toDataUrl } from '../lib/perception/sources/bili/qr.js'
 
 // 已验证（jsqr 解码 + 参考编码器比对）：https://b23.tv/abc → v2，25×25
 const GOLDEN = '26c708e80d57de72'

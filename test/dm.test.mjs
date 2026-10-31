@@ -12,7 +12,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { withTemp } from './_fixture.mjs'
-import { createBiliClient } from '../lib/fish/bili.js'
+import { createBiliClient } from '../lib/perception/sources/bili/bili.js'
 import { createApproval, readApproval } from '../lib/fish/approvals.js'
 import { executeApproval } from '../lib/fish/execute.js'
 import { loadConfig, saveConfig } from '../lib/fish/wake.js'

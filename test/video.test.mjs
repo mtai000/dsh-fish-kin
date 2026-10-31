@@ -13,7 +13,7 @@ import { EventEmitter } from 'node:events'
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { withTemp } from './_fixture.mjs'
-import { detectFfmpeg, grabTile, saveCover, outPath } from '../lib/fish/video.js'
+import { detectFfmpeg, grabTile, saveCover, outPath } from '../lib/perception/sources/bili/video.js'
 
 const PNG = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3, 4])
 
@@ -101,7 +101,7 @@ test('输出路径只留安全字符', () => {
 })
 
 test('复用：看过的同一条不再抽帧（省 token 第一招）', async () => {
-  const { cachedWatchPath } = await import('../lib/fish/video.js')
+  const { cachedWatchPath } = await import('../lib/perception/sources/bili/video.js')
   const { mkdir, utimes, writeFile } = await import('node:fs/promises')
   await withTemp(async (root) => {
     assert.equal(await cachedWatchPath(root, 'BV1xx411c7mD', 7), null)

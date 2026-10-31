@@ -162,3 +162,40 @@ test('配置：perception 有默认值，且能存下来再读回', async () => 
     assert.equal(c.perception.sources[0].read[0], 'x_read')
   })
 })
+
+test('P1：内建 B 站默认不挂，只有 adapter=builtin 才挂', async () => {
+  const { shouldRegisterBuiltinBili } = await import('../lib/fish/index.js')
+  assert.equal(shouldRegisterBuiltinBili({}), false)
+  assert.equal(shouldRegisterBuiltinBili({ perception: { sources: [] } }), false)
+  assert.equal(shouldRegisterBuiltinBili({
+    perception: { sources: [{ id: 'x', adapter: 'external', enabled: true }] },
+  }), false)
+  assert.equal(shouldRegisterBuiltinBili({
+    perception: { sources: [{ id: 'x', adapter: 'builtin', enabled: true }] },
+  }), true)
+  assert.equal(shouldRegisterBuiltinBili({
+    perception: { sources: [{ id: 'x', adapter: 'builtin', enabled: false }] },
+  }), false)
+})
+
+test('P1：没挂内建 B 站时，身份段不再提 fish_bili', async () => {
+  await withTemp(async (root) => {
+    await appendEvent(root, { kind: 'seed', body: '你刚开始存在。' })
+    assert.equal(identityText(root).includes('fish_bili'), false)
+
+    // 配置里显式打开 builtin 才出现
+    const { mkdir, writeFile } = await import('node:fs/promises')
+    await mkdir(root, { recursive: true })
+    await writeFile(`${root}/config.json`, JSON.stringify({
+      perception: { sources: { bili: { adapter: 'builtin', tools: { read: ['r'], act: ['a'] } } } },
+    }), 'utf8')
+    assert.equal(identityText(root).includes('fish_bili'), true)
+  })
+})
+
+test('P1：builtin 源不需要列工具名也能保留', async () => {
+  const list = normalizeSources({ bili: { adapter: 'builtin' } })
+  assert.equal(list.length, 1)
+  assert.equal(list[0].adapter, 'builtin')
+  assert.equal(list[0].read.length, 0)
+})
