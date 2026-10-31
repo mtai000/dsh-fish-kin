@@ -59,6 +59,11 @@
   </div>
 
   <div class="card">
+    <h2>认知（想弄明白 / 最近看到）</h2>
+    <div id="perception"></div>
+  </div>
+
+  <div class="card">
     <h2>工具面与守卫</h2>
     <div id="guard"></div>
   </div>
@@ -116,6 +121,18 @@ async function load() {
     (m.folded ? '<p class="stat">被折起来的一句：<span class="mono">' + esc(m.folded) + '</span></p>' : '') +
     ((m.shownRefusals || []).length ? '<p class="stat">拒绝过：' + m.shownRefusals.map(esc).join('；') +
       (m.foldedRefusals ? '；' + esc(m.foldedRefusals) : '') + '</p>' : '');
+
+  const per = s.perception || { intents: [], perceived: [], sources: [] };
+  const srcList = per.sources.length
+    ? per.sources.map((x) => '<span class="badge' + (x.enabled ? ' ok' : '') + '">' + esc(x.title) + ' · ' + esc(x.adapter) + '</span>').join(' ')
+    : '<span class="dim">没有配置感知源</span>';
+  const listOf = (arr, showRef) => arr.length
+    ? '<ul>' + arr.slice().reverse().map((x) => '<li><span class="mono">' + esc(t(x.at)) + '</span> ' + esc(x.text) + (showRef && x.ref ? ' <span class="mono dim">' + esc(x.ref) + '</span>' : '') + '</li>').join('') + '</ul>'
+    : '<p class="empty">还没有。</p>';
+  $('perception').innerHTML =
+    '<p class="stat">感知源：' + srcList + '</p>' +
+    '<p class="stat">最近想弄明白</p>' + listOf(per.intents, false) +
+    '<p class="stat">最近看到</p>' + listOf(per.perceived, true);
 
   const tt = s.tools, g = s.guard;
   $('guard').innerHTML =

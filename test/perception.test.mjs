@@ -110,8 +110,11 @@ test('intent 能落盘、带 meta、但不进"你说过的话"', async () => {
     assert.deepEqual(it.meta, { source: 'bili', goal: 'explore' })
 
     const t = identityText(root)
-    assert.equal(t.includes('想去看看'), false, 'P0 阶段 intent 不进身份段')
-    assert.match(t, /## 你是谁/)
+    // P2 起：intent 有自己的小节，但**不进「你说过的话」**
+    const said = (t.split('## 你说过的话')[1] ?? '').split('## ')[0]
+    assert.equal(said.includes('想去看看'), false, 'intent 不能混进她说的话')
+    assert.match(t, /## 最近想弄明白/)
+    assert.match(t, /想去看看/)
   })
 })
 
@@ -187,7 +190,7 @@ test('P1：没挂内建 B 站时，身份段不再提 fish_bili', async () => {
     const { mkdir, writeFile } = await import('node:fs/promises')
     await mkdir(root, { recursive: true })
     await writeFile(`${root}/config.json`, JSON.stringify({
-      perception: { sources: { bili: { adapter: 'builtin', tools: { read: ['r'], act: ['a'] } } } },
+      perception: { sources: { bili: { adapter: 'builtin', tools: { read: ['read_tool'], act: ['act_tool'] } } } },
     }), 'utf8')
     assert.equal(identityText(root).includes('fish_bili'), true)
   })
@@ -198,4 +201,51 @@ test('P1：builtin 源不需要列工具名也能保留', async () => {
   assert.equal(list.length, 1)
   assert.equal(list[0].adapter, 'builtin')
   assert.equal(list[0].read.length, 0)
+})
+
+test('P2：derive 认识 intent / perceived', async () => {
+  const { derive } = await import('../lib/fish/derive.js')
+  const E = (kind, text, meta) => ({ id: kind + text, kind, type: kind, text, meta, ts: new Date().toISOString(), refs: [], verdict: null, confidence: 0.5, day: 1, v: 1, source: 'system' })
+  const m = derive([
+    E('seed', '你刚开始存在。'),
+    E('intent', '想去看看', { source: 'a' }),
+    E('perceived', '看到一条视频', { source: 'a', ref: 'BV1' }),
+  ])
+  assert.equal(m.intentCount, 1)
+  assert.equal(m.perceivedCount, 1)
+  assert.equal(m.intents[0].text, '想去看看')
+  assert.equal(m.perceived[0].meta.ref, 'BV1')
+})
+
+test('P2：身份段两小节最多三条，多的折一行', async () => {
+  await withTemp(async (root) => {
+    await appendEvent(root, { kind: 'seed', body: '你刚开始存在。' })
+    for (let i = 0; i < 5; i++) {
+      await appendEvent(root, { kind: 'intent', body: `想去看看第 ${i} 个地方`, meta: { source: 'a' } })
+      await appendEvent(root, { kind: 'perceived', body: `看到了第 ${i} 条东西`, meta: { source: 'a' } })
+    }
+    const t = identityText(root)
+    const section = (title) => (t.split(`## ${title}`)[1] ?? '').split('## ')[0]
+    const intents = section('最近想弄明白').split('\n').filter((l) => l.startsWith('- '))
+    const seen = section('最近看到').split('\n').filter((l) => l.startsWith('- '))
+    assert.equal(intents.length, 4, '三条 + 一行折叠')
+    assert.equal(seen.length, 4)
+    assert.match(intents[3], /更早还有 2 条/)
+  })
+})
+
+test('P2：观测台能看到认知小节与感知源', async () => {
+  await withTemp(async (root) => {
+    await appendEvent(root, { kind: 'seed', body: '你刚开始存在。' })
+    await appendEvent(root, { kind: 'intent', body: '想去看看', meta: { source: 'a' } })
+    await appendEvent(root, { kind: 'perceived', body: '看到一条', meta: { source: 'a', ref: 'R1' } })
+    await saveConfig({ perception: { sources: { a: { title: '某来源', tools: { read: ['read_tool'] } } } } }, root)
+
+    const { fishState } = await import('../lib/fish/observe.js')
+    const s = await fishState(root, {})
+    assert.equal(s.perception.intents.length, 1)
+    assert.equal(s.perception.perceived[0].ref, 'R1')
+    assert.equal(s.perception.sources[0].id, 'a')
+    assert.equal(s.perception.sources[0].adapter, 'external')
+  })
 })
