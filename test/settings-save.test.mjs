@@ -12,17 +12,17 @@ import { readFile } from 'node:fs/promises'
 import { withTemp } from './_fixture.mjs'
 import { saveConfig, loadConfig } from '../lib/fish/wake.js'
 
-test('后端：style / workspaces / tools 存得下也读得回', async () => {
+test('后端：style / visits / tools 存得下也读得回', async () => {
   await withTemp(async (root) => {
     const r = await saveConfig({
       style: { preset: 'cute', text: '说话软软的。' },
-      workspaces: ['D:/proj'],
+      visits: ['D:/proj'],
       tools: { allow: ['schedule_create'] },
     }, root)
     assert.equal(r.ok, true)
     const cfg = await loadConfig(root)
     assert.equal(cfg.style.text, '说话软软的。')
-    assert.deepEqual(cfg.workspaces, ['D:/proj'])
+    assert.deepEqual(cfg.visits, ['D:/proj'])
     assert.deepEqual(cfg.tools.allow, ['schedule_create'])
   })
 })

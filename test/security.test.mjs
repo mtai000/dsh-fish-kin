@@ -55,14 +55,12 @@ test('闸门只挂在她的工作区里', async () => {
   })
 })
 
-test('配置里的 workspaces 也算"在家"', async () => {
+test('串门目录也算她可以出现的地方（闸门照样挂）', async () => {
   await withTemp(async (root) => {
     const extra = join(root, 'proj')
     await mkdir(root, { recursive: true })
-    await writeFile(join(root, 'config.json'), JSON.stringify({ workspaces: [extra] }), 'utf8')
-    const ws = workspacesOf(root)
-    assert.ok(ws.some((x) => x.includes('home')))
-    assert.ok(ws.some((x) => x.includes('proj')), ws.join(','))
+    await writeFile(join(root, 'config.json'), JSON.stringify({ visits: [extra] }), 'utf8')
+    assert.equal(workspacesOf(root).length, 1, '家只有一个')
 
     const onCreated = setup(root)
     const a = fakeAgent(extra)

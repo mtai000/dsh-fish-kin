@@ -278,12 +278,17 @@ test('许可接口：列待批 / 决定 / 策略 / 撤销', async () => {
   })
 })
 
-test('工作区接口：读得到"在家"目录', async () => {
+test('工作区接口：家唯一，串门是另一个列表', async () => {
   await withTemp(async (dir) => {
     const h = await harness(dir)
     const r = JSON.parse((await h.call('GET', '/api/workspaces')).body)
     assert.equal(r.ok, true)
-    assert.ok(Array.isArray(r.effective))
-    assert.ok(r.effective.some((x) => String(x).includes('home')))
+    assert.ok(r.familyRoot, '要给出家（家族工作区）的路径')
+    assert.ok(String(r.homeDir).includes('大肥鱼的家'))
+    assert.deepEqual(r.visits, [])
+
+    const saved = JSON.parse((await h.call('POST', '/api/workspaces', { visits: ['D:/proj'] })).body)
+    assert.equal(saved.ok, true)
+    assert.deepEqual(saved.visits, ['D:/proj'])
   })
 })

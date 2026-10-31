@@ -93,18 +93,6 @@ test('她会主动在每个"在家"目录里建一个「大肥鱼的家」', asy
   }
 })
 
-test('工作区里的"家"也算她在家的目录', async () => {
-  const { workspacesOf } = await import('../lib/fish/restrict.js')
-  const base = await mkdtemp(join(tmpdir(), 'kin-ws2-'))
-  const root = join(base, 'fish')
-  await mkdir(root, { recursive: true })
-  const w = join(base, 'proj')
-  await writeFile(join(root, 'config.json'), JSON.stringify({ workspaces: [w] }), 'utf8')
-  const list = workspacesOf(root)
-  assert.ok(list.some((x) => x.endsWith('大肥鱼的家')), list.join(' | '))
-  assert.ok(list.some((x) => x.includes('proj') && !x.endsWith('大肥鱼的家')), list.join(' | '))
-})
-
 test('串门：她可以去、但不住下', async () => {
   const { loadConfig, saveConfig } = await import('../lib/fish/wake.js')
   const { registerRestrict, visitsOf } = await import('../lib/fish/restrict.js')
@@ -126,7 +114,7 @@ test('串门：她可以去、但不住下', async () => {
   assert.ok(visitsOf(root)[0].endsWith('guest-proj'))
 
   // 串门目录不建屋子
-  await ensureWorkspaceHomes(root, cfg.workspaces)
+  await ensureWorkspaceHomes(root, [])
   assert.equal(existsSync(join(guest, HOME_DIR)), false)
 
   // 闸门在串门目录里也挂
