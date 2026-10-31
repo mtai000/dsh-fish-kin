@@ -144,3 +144,55 @@ test('串门：她可以去、但不住下', async () => {
   await saveConfig({ visits: [join(base, 'another')] }, root)
   assert.deepEqual((await loadConfig(root)).visits, [join(base, 'another')])
 })
+
+test('她会在侧栏建一个「大肥鱼的家」工作区，并用 workspaceId 开会话', async () => {
+  const { ensureHome, ensureWorkspace } = await import('../lib/fish/home.js')
+  const base = await mkdtemp(join(tmpdir(), 'kin-ws3-'))
+  const root = join(base, 'fish')
+  await mkdir(root, { recursive: true })
+
+  const made = []
+  const renames = []
+  const registry = {
+    list: () => made,
+    create: async (dir, title) => {
+      const ws = { id: 'ws_1', path: dir, title, setTitle: async (t) => { ws.title = t; renames.push(t) } }
+      made.push(ws)
+      return ws
+    },
+  }
+  const created = []
+  const sc = {
+    list: async () => [],
+    create: async (opts) => { created.push(opts); return { sessionId: 's1' } },
+    rename: async () => {},
+  }
+  const ctx = { get: (k) => (k === 'workspaceRegistry' ? registry : k === 'sessionController' ? sc : null) }
+
+  const ws = await ensureWorkspace(ctx, { root, log: () => {} })
+  assert.equal(ws.ok, true, ws.why)
+  assert.equal(ws.wsId, 'ws_1')
+  assert.equal(made[0].title, '大肥鱼的家')
+
+  const home = await ensureHome(ctx, { root, log: () => {} })
+  assert.equal(home.ok, true, home.why)
+  assert.equal(created.length, 1)
+  assert.equal(created[0].workspaceId, 'ws_1', '必须用 workspaceId 开会话，侧栏才看得见')
+  assert.equal(created[0].cwd, undefined)
+
+  const { readHome } = await import('../lib/fish/home.js')
+  assert.equal((await readHome(root)).workspaceId, 'ws_1')
+})
+
+test('宿主没有 workspaceRegistry 时退回 cwd 建会话（不阻断）', async () => {
+  const { ensureHome } = await import('../lib/fish/home.js')
+  const base = await mkdtemp(join(tmpdir(), 'kin-ws4-'))
+  const root = join(base, 'fish')
+  await mkdir(root, { recursive: true })
+  const created = []
+  const sc = { list: async () => [], create: async (o) => { created.push(o); return { sessionId: 's2' } }, rename: async () => {} }
+  const ctx = { get: (k) => (k === 'sessionController' ? sc : null) }
+  const r = await ensureHome(ctx, { root, log: () => {} })
+  assert.equal(r.ok, true)
+  assert.ok(created[0].cwd && String(created[0].cwd).includes('大肥鱼的家'))
+})
