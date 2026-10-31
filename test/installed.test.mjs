@@ -54,3 +54,21 @@ test('扫描：目录不存在时不抛', async () => {
   const r = await listInstalledPlugins({ baseDir: join(tmpdir(), 'kin-not-exist-' + Date.now()) })
   assert.deepEqual(r.plugins, [])
 })
+
+test('0.21.0 的坑：默认扫描目录要能往上找到 node_modules（不是插件自己）', async () => {
+  const { resolveNodeModules } = await import('../lib/perception/installed.js')
+  const tmp = await mkdtemp(join(tmpdir(), 'kin-layout-'))
+  const nm = join(tmp, 'node_modules')
+  const here = join(nm, 'dsh-fish-kin', 'lib', 'perception')
+  await mkdir(here, { recursive: true })
+  assert.equal(resolveNodeModules(here), nm)
+
+  // 真的能扫到兄弟插件
+  const sib = join(nm, 'dsh-fake', 'index.js')
+  await mkdir(join(nm, 'dsh-fake'), { recursive: true })
+  await writeFile(join(nm, 'dsh-fake', 'package.json'), JSON.stringify({ name: 'dsh-fake', version: '1.0.0', dsh: {} }), 'utf8')
+  await writeFile(sib, "defineTool({ name: 'fake_tool' })", 'utf8')
+  const { plugins } = await listInstalledPlugins({ baseDir: resolveNodeModules(here) })
+  assert.deepEqual(plugins.map((p) => p.name), ['dsh-fake'])
+  assert.deepEqual(plugins[0].tools, ['fake_tool'])
+})
