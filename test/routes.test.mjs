@@ -320,3 +320,30 @@ test('谷时状态接口：给出北京时间与是否谷时', async () => {
     assert.equal(r.mode, 'propose')
   })
 })
+
+test('感知源接口：列出 / 接上 / 停用 / 断开', async () => {
+  await withTemp(async (dir) => {
+    const h = await harness(dir)
+    const empty = JSON.parse((await h.call('GET', '/api/sources')).body)
+    assert.equal(empty.ok, true)
+    assert.deepEqual(empty.sources, [])
+
+    const linked = JSON.parse((await h.call('POST', '/api/sources', {
+      id: 'cdda', title: '去游戏里走走', read: 'observe_game', act: 'move', budget: 1,
+    })).body)
+    assert.equal(linked.ok, true, linked.why)
+
+    const listed = JSON.parse((await h.call('GET', '/api/sources')).body)
+    assert.equal(listed.sources.length, 1)
+    assert.equal(listed.sources[0].id, 'cdda')
+    assert.equal(listed.sources[0].adapter, 'external')
+
+    await h.call('POST', '/api/sources/toggle', { id: 'cdda', enabled: false })
+    const off = JSON.parse((await h.call('GET', '/api/sources')).body)
+    assert.equal(off.sources[0].enabled, false)
+
+    await h.call('POST', '/api/sources/remove', { id: 'cdda' })
+    const gone = JSON.parse((await h.call('GET', '/api/sources')).body)
+    assert.equal(gone.sources.length, 0)
+  })
+})

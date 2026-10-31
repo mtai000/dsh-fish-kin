@@ -350,3 +350,19 @@ test('P4：接外部源只写配置，本仓库不出现那个插件的代码', 
     assert.equal(bad.ok, false)
   })
 })
+
+test('A：接线检测——能列出就标 ok/missing，列不出就标 unknown（不放假绿灯）', async () => {
+  const { probeHostTools, markSources } = await import('../lib/perception/probe.js')
+  const sources = normalizeSources({ bili: { title: '看 B 站', tools: { read: ['search_ok', 'hot_missing'], act: ['say'] } } })
+
+  const withList = await probeHostTools({ get: () => ({ list: () => [{ name: 'search_ok' }, { name: 'say' }] }) })
+  assert.equal(withList.supported, true)
+  const marked = markSources(sources, withList.names)
+  assert.equal(marked[0].read.find((t) => t.tool === 'search_ok').status, 'ok')
+  assert.equal(marked[0].read.find((t) => t.tool === 'hot_missing').status, 'missing')
+  assert.equal(marked[0].act[0].status, 'ok')
+
+  const noList = await probeHostTools({ get: () => ({}) })
+  assert.equal(noList.supported, false)
+  assert.equal(markSources(sources, noList.names)[0].read[0].status, 'unknown')
+})
