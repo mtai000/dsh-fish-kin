@@ -12,13 +12,19 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { listInstalledPlugins, guessToolNames, sourceIdOf } from '../lib/perception/installed.js'
 
-test('从 defineTool 里猜工具名（只在附近找）', () => {
+test('从注册调用里猜工具名（defineTool / tools.register 都认）', () => {
   const src = `
     const a = ctx.tools.register(defineTool({ name: 'alpha_tool', description: 'x' }))
-    const b = ctx.tools.register(defineTool({ name: 'beta_tool', description: 'y' }))
+    const b = ctx.tools.register({ name: 'beta_tool', description: 'y' })
+    const c = registerTool({ name: 'gamma_tool' })
     const notATool = { name: 'something_else' }
   `
-  assert.deepEqual(guessToolNames(src), ['alpha_tool', 'beta_tool'])
+  assert.deepEqual(guessToolNames(src), ['alpha_tool', 'beta_tool', 'gamma_tool'])
+})
+
+test('注册对象很长也不影响（不要求配对括号）', () => {
+  const src = "ctx.tools.register({ name: 'long_tool', description: 'x'.repeat(2000) })"
+  assert.deepEqual(guessToolNames(src), ['long_tool'])
 })
 
 test('包名 → 源 id', () => {
