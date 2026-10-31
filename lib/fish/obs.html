@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>大肥鱼 · 观测台</title>
+<style>
+  :root { --bg:#0d1117; --panel:#161b22; --panel2:#1c2430; --line:#2a3441; --ink:#e6edf3; --dim:#8b949e; --ok:#3fb950; --warn:#d29922; --hot:#f85149; --accent:#58a6ff; --mono:ui-monospace,Consolas,"Cascadia Mono",monospace; }
+  * { box-sizing:border-box; }
+  body { margin:0; padding:26px 18px 60px; background:var(--bg); color:var(--ink); font:14px/1.7 -apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif; }
+  .wrap { max-width: 980px; margin: 0 auto; }
+  header { display:flex; align-items:baseline; gap:12px; flex-wrap:wrap; margin-bottom:4px; }
+  h1 { font-size:19px; margin:0; letter-spacing:.04em; }
+  .sub { color:var(--dim); font-size:12px; font-family:var(--mono); word-break:break-all; }
+  hr { border:0; border-top:1px solid var(--line); margin:16px 0; }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:16px 18px; margin-bottom:14px; }
+  .card h2 { font-size:13px; margin:0 0 10px; color:var(--dim); font-weight:600; letter-spacing:.06em; }
+  .row { display:flex; gap:20px; flex-wrap:wrap; }
+  .stat { font-family:var(--mono); font-size:12px; color:var(--dim); }
+  .stat b { color:var(--ink); font-size:15px; }
+  pre { background:#0b0f14; border:1px solid var(--line); border-radius:8px; padding:14px; overflow:auto; max-height:420px; white-space:pre-wrap; word-break:break-word; margin:0; font-family:var(--mono); font-size:12.5px; }
+  ul { margin:6px 0 0; padding-left:20px; }
+  li { margin:2px 0; }
+  .badge { display:inline-block; padding:1px 8px; border-radius:20px; font-size:11px; border:1px solid var(--line); color:var(--dim); margin-right:6px; }
+  .badge.ok { color:var(--ok); border-color:#3fb95055; }
+  .badge.bad { color:var(--hot); border-color:#f8514955; }
+  .mono { font-family:var(--mono); }
+  .dim { color:var(--dim); }
+  .empty { color:var(--dim); font-size:13px; }
+  table { width:100%; border-collapse:collapse; font-size:12.5px; }
+  th,td { text-align:left; padding:6px 8px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th { color:var(--dim); font-weight:500; font-size:11.5px; }
+  .k-seed { color:var(--accent); } .k-said { color:var(--ink); } .k-amend { color:var(--warn); }
+  .k-refuse { color:var(--hot); } .k-diary { color:#a371f7; } .k-note,.k-woke { color:var(--dim); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>大肥鱼 · 观测台</h1>
+    <span class="sub" id="root">正在读…</span>
+  </header>
+  <hr>
+
+  <div class="card">
+    <h2>她现在</h2>
+    <div class="row" id="counts"></div>
+  </div>
+
+  <div class="card">
+    <h2>她这一轮实际看到的身份段（原文）</h2>
+    <p class="empty" style="margin-top:0">这就是她每轮读到的全部事实。不是你想象的版本——是渲染出来的这一份。</p>
+    <pre id="identity">…</pre>
+  </div>
+
+  <div class="card">
+    <h2>记忆的重量</h2>
+    <div id="memory"></div>
+  </div>
+
+  <div class="card">
+    <h2>工具面与守卫</h2>
+    <div id="guard"></div>
+  </div>
+
+  <div class="card">
+    <h2>生物钟</h2>
+    <div id="wake"></div>
+  </div>
+
+  <div class="card">
+    <h2>最近的事（倒序）</h2>
+    <div id="recent"></div>
+  </div>
+
+  <div class="card">
+    <h2>B 站</h2>
+    <div id="bili"></div>
+  </div>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const API = '/dsh-fish-obs';
+const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const t = (iso) => { const d = new Date(iso); return isNaN(d) ? '' : d.toLocaleString('zh-CN', { hour12: false }); };
+
+function stat(label, value, suffix) {
+  return '<div class="stat">' + label + ' <b>' + value + '</b>' + (suffix ? ' ' + suffix : '') + '</div>';
+}
+
+async function load() {
+  const r = await fetch(API + '/api/state', { headers: { accept: 'application/json' } });
+  const s = await r.json();
+  if (!s.ok) { $('root').textContent = '读不到：' + (s.why || ''); return; }
+  $('root').textContent = s.root;
+
+  $('counts').innerHTML =
+    stat('第', s.day, '天') +
+    stat('事件', s.counts.events) +
+    stat('判断', s.counts.beliefs) +
+    stat('拒绝', s.counts.refusals) +
+    stat('日记', s.counts.diaries) +
+    stat('字数', s.counts.chars) +
+    stat('称呼', s.name ? '「' + esc(s.name) + '」' : '还没想好') +
+    (s.lastAt ? stat('上次说话', t(s.lastAt)) : '');
+
+  $('identity').textContent = s.identity || '（还没有身份段：她还没被播种？）';
+
+  const m = s.memory || {};
+  const shown = (m.shown || []).map((x) =>
+    '<li>' + esc(x.text) + ' <span class="badge">说过 ' + x.times + ' 次' + (x.amended ? ' · 改口 ' + x.amended + ' 次' : '') + ' · 重 ' + x.score + '</span></li>').join('');
+  $('memory').innerHTML =
+    '<p class="stat">共 <b>' + (m.totalBeliefs || 0) + '</b> 件判断；摆出来 <b>' + (m.shown || []).length + '</b> 条</p>' +
+    (shown ? '<ul>' + shown + '</ul>' : '<p class="empty">还没有判断。</p>') +
+    (m.folded ? '<p class="stat">被折起来的一句：<span class="mono">' + esc(m.folded) + '</span></p>' : '') +
+    ((m.shownRefusals || []).length ? '<p class="stat">拒绝过：' + m.shownRefusals.map(esc).join('；') +
+      (m.foldedRefusals ? '；' + esc(m.foldedRefusals) : '') + '</p>' : '');
+
+  const tt = s.tools, g = s.guard;
+  $('guard').innerHTML =
+    '<p>' + (tt && tt.ok ? '<span class="badge ok">收窄已生效</span>' : '<span class="badge bad">收窄没挂上</span>') +
+    (tt ? ' 她的工具：<span class="mono">' + (tt.allow || []).map(esc).join('、') + '</span>' : ' <span class="dim">（还没拿到状态）</span>') +
+    (tt && tt.guard ? ' <span class="badge ok">兜底守卫在</span>' : ' <span class="badge bad">兜底守卫不在</span>') + '</p>' +
+    '<p class="stat">守卫挡过 <b>' + (tt ? tt.blocked || 0 : 0) + '</b> 次不该有的调用' +
+    (g ? '；写入被拒 ' + (g.rejects || 0) + ' 次（凭据），"改自己"记了 ' + (g.selfMod || 0) + ' 次' : '') + '</p>' +
+    (tt && tt.why ? '<p class="empty">' + esc(tt.why) + '</p>' : '');
+
+  const c = s.config || {};
+  const h = s.home || {};
+  $('wake').innerHTML =
+    '<p class="stat">' + (c.wake && c.wake.enabled ? '<span class="badge ok">开着</span>' : '<span class="badge bad">关着</span>') +
+    ' 每天 ' + ((c.wake && c.wake.perDay) || 0) + ' 次 · 时间窗 ' + ((c.wake && c.wake.window) || []).join('–') +
+    ' · B站 ' + (c.bili && c.bili.enabled ? '开' : '关') + '</p>' +
+    '<p class="stat">会话：<span class="mono">' + esc(h.sessionId || '（还没建）') + '</span></p>' +
+    ((h.wakes || []).length ? '<p class="stat">最近醒来：' + h.wakes.slice(-5).map(esc).join('、') + '</p>' : '<p class="empty">还没醒过。</p>');
+
+  const rows = (s.recent || []).map((e) =>
+    '<tr><td class="mono">' + esc(t(e.at)) + '</td><td class="k-' + esc(e.kind) + ' mono">' + esc(e.kind) + '</td><td>' + esc(e.text) + '</td></tr>').join('');
+  $('recent').innerHTML = rows ? '<table><thead><tr><th>时间</th><th>类型</th><th>内容</th></tr></thead><tbody>' + rows + '</tbody></table>' : '<p class="empty">还没有事件。</p>';
+
+  const b = s.bili || [];
+  const quota = s.quota ? '<p class="stat">今天：' + esc(s.quota) + '</p>' : '';
+  $('bili').innerHTML = quota + (b.length
+    ? '<ul>' + b.map((x) => '<li><span class="mono">' + esc(t(x.at)) + '</span> ' + esc(x.text) + '</li>').join('') + '</ul>'
+    : '<p class="empty">还没看过。</p>');
+}
+
+load();
+setInterval(load, 15000);
+</script>
+</body>
+</html>

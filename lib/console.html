@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>大肥鱼 · 子代传承</title>
+<style>
+  :root {
+    --bg: #0d1117; --panel: #161b22; --panel2: #1c2430; --line: #2a3441;
+    --ink: #e6edf3; --dim: #8b949e; --ok: #3fb950; --warn: #d29922; --hot: #f85149;
+    --accent: #58a6ff; --mono: ui-monospace, "SFMono-Regular", Consolas, "Cascadia Mono", monospace;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 28px 20px 60px; background: var(--bg); color: var(--ink);
+    font: 14px/1.7 -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  }
+  .wrap { max-width: 940px; margin: 0 auto; }
+  header { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 6px; }
+  h1 { font-size: 19px; margin: 0; letter-spacing: .04em; }
+  .sub { color: var(--dim); font-size: 12px; font-family: var(--mono); word-break: break-all; }
+  hr { border: 0; border-top: 1px solid var(--line); margin: 18px 0; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; margin-bottom: 14px; }
+  .card h2 { font-size: 13px; margin: 0 0 10px; color: var(--dim); font-weight: 600; letter-spacing: .08em; text-transform: none; }
+  .row { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
+  .ring {
+    --p: 0; width: 74px; height: 74px; border-radius: 50%; flex: 0 0 auto;
+    background: conic-gradient(var(--accent) calc(var(--p) * 1%), #232c38 0);
+    display: grid; place-items: center; position: relative;
+  }
+  .ring::after { content: ""; position: absolute; inset: 7px; border-radius: 50%; background: var(--panel); }
+  .ring span { position: relative; z-index: 1; font-family: var(--mono); font-size: 15px; }
+  .ring.hot { background: conic-gradient(var(--hot) calc(var(--p) * 1%), #232c38 0); }
+  .ring.warm { background: conic-gradient(var(--warn) calc(var(--p) * 1%), #232c38 0); }
+  .stat { font-family: var(--mono); font-size: 12px; color: var(--dim); }
+  .stat b { color: var(--ink); font-weight: 600; }
+  ul.reasons { margin: 8px 0 0; padding-left: 18px; color: var(--dim); font-size: 12.5px; }
+  .headline { margin: 6px 0 0; font-size: 14px; }
+  button {
+    background: var(--panel2); color: var(--ink); border: 1px solid var(--line);
+    border-radius: 7px; padding: 7px 13px; font-size: 13px; cursor: pointer; font-family: inherit;
+  }
+  button:hover { border-color: var(--accent); }
+  button.primary { background: #1f6feb22; border-color: #1f6feb88; }
+  button.danger { border-color: #f8514955; color: #ff9d97; }
+  button:disabled { opacity: .45; cursor: not-allowed; }
+  input[type=text] {
+    background: #0b0f14; border: 1px solid var(--line); color: var(--ink);
+    border-radius: 7px; padding: 7px 10px; font-size: 13px; font-family: inherit; min-width: 200px;
+  }
+  input[type=number] {
+    background: #0b0f14; border: 1px solid var(--line); color: var(--ink);
+    border-radius: 6px; padding: 4px 7px; font: inherit; font-size: 12.5px;
+  }
+  input[type=checkbox] { accent-color: var(--accent); vertical-align: -2px; }
+  pre {
+    background: #0b0f14; border: 1px solid var(--line); border-radius: 8px; padding: 14px;
+    overflow: auto; max-height: 420px; font-family: var(--mono); font-size: 12.5px;
+    white-space: pre-wrap; word-break: break-word; margin: 0;
+  }
+  .toolbar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+  .empty { color: var(--dim); font-size: 13px; }
+  .badge { display: inline-block; padding: 1px 7px; border-radius: 20px; font-size: 11px; border: 1px solid var(--line); color: var(--dim); }
+  .req { border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; margin-top: 10px; background: var(--panel2); }
+  .req .top { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+  .req .id { font-family: var(--mono); font-size: 11.5px; color: var(--dim); }
+  .req .acts { margin-top: 10px; display: flex; gap: 8px; flex-wrap: wrap; }
+  table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--dim); font-weight: 500; font-size: 11.5px; letter-spacing: .04em; }
+  td.mono, .mono { font-family: var(--mono); }
+  .toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: var(--panel2);
+    border: 1px solid var(--line); padding: 10px 16px; border-radius: 8px; font-size: 13px; opacity: 0;
+    transition: opacity .2s; pointer-events: none; max-width: 80vw; }
+  .toast.show { opacity: 1; }
+  code { font-family: var(--mono); font-size: 12px; background: #0b0f14; padding: 1px 5px; border-radius: 4px; }
+  a { color: var(--accent); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>大肥鱼 · 子代传承</h1>
+    <span class="sub" id="paths">正在读她的存档…</span>
+  </header>
+  <hr>
+
+  <div class="card">
+    <h2>记忆压力</h2>
+    <div class="row">
+      <div class="ring" id="ring"><span id="pct">–</span></div>
+      <div>
+        <div class="stat" id="counts">–</div>
+        <p class="headline" id="headline">–</p>
+        <ul class="reasons" id="reasons"></ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>这一次会带走什么</h2>
+    <div class="toolbar">
+      <button id="btn-preview">看一眼遗传包</button>
+      <button id="btn-request" class="primary">立一张待批的单子</button>
+      <button id="btn-birth" class="danger">直接生一个</button>
+      <input type="text" id="label" placeholder="给孩子的称呼（可选，只进族谱）" maxlength="40">
+    </div>
+    <div id="preview-box"><p class="empty">还没看。点上面的按钮，它会真的把她的记忆读一遍再蒸馏。</p></div>
+  </div>
+
+  <div class="card">
+    <h2>待批准</h2>
+    <div id="pending"><p class="empty">没有待批的单子。</p></div>
+  </div>
+
+  <div class="card">
+    <h2>族谱</h2>
+    <div id="lineage"><p class="empty">正在读…</p></div>
+  </div>
+
+  <div class="card">
+    <h2>教孩子（出生之后的继续传承）</h2>
+    <div class="row" style="gap:10px; margin-bottom:10px">
+      <label class="stat">教给 <select id="teach-child" style="background:#0b0f14;color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:4px 8px;font:inherit"></select></label>
+      <button id="btn-teach-auto" class="primary">让她自己挑三课教过去</button>
+      <button id="btn-teach-spoken">让她亲口说一句（会叫醒她一次）</button>
+    </div>
+    <div class="row" style="gap:8px; margin-bottom:10px; align-items:flex-start">
+      <input type="text" id="teach-text" placeholder="或者你自己指定一句（160 字以内）" maxlength="160" style="flex:1; min-width:0">
+      <button id="btn-teach-one">教这句</button>
+    </div>
+    <div id="teach-box"><p class="empty">还没有孩子，或者正在读…</p></div>
+  </div>
+
+  <div class="card">
+    <h2>环境参数（不是她本人）</h2>
+    <div class="row" style="gap:14px">
+      <label class="stat">事件上限 <input type="number" id="cfg-events" min="5" step="50" style="width:88px"></label>
+      <label class="stat">字数上限 <input type="number" id="cfg-chars" min="10000" step="10000" style="width:110px"></label>
+      <label class="stat">天数上限 <input type="number" id="cfg-days" min="1" step="10" style="width:78px"></label>
+      <label class="stat">冷却事件 <input type="number" id="cfg-cooldown" min="10" step="50" style="width:88px"></label>
+      <label class="stat" title="孩子出生时，最多抄几条妈妈「拒绝过的事」过去">继承边界 <input type="number" id="cfg-boundaries" min="0" max="12" style="width:64px"></label>
+      <label class="stat" title="最多抄几条妈妈「认定过的事」过去">继承判断 <input type="number" id="cfg-beliefs" min="0" max="12" style="width:64px"></label>
+    </div>
+    <div class="row" style="gap:14px; margin-top:10px">
+      <label class="stat"><input type="checkbox" id="cfg-auto"> 到阈值自动提一张单</label>
+      <label class="stat" title="她记得有孩子这件事写到多细；孩子的原话永远不写进去">记得孩子
+        <select id="cfg-presence" style="background:#0b0f14;color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:4px 8px;font:inherit">
+          <option value="none">只知道有孩子</option>
+          <option value="memory">加上她攒了多少</option>
+          <option value="teach">再加教过几件</option>
+        </select>
+      </label>
+      <label class="stat"><input type="checkbox" id="cfg-name"> 继承她管你叫的称呼</label>
+      <button id="btn-savecfg">保存</button>
+    </div>
+    <p class="empty" style="margin-top:10px">
+      这里只放生长环境：什么时候提醒、继承什么、报不报喜。没有一格能改她的性格——
+      自动提的也只是一张单子，生不生仍然要你点头。
+    </p>
+  </div>
+
+  <div class="card">
+    <h2>怎么把生下来的这位养起来</h2>
+    <p class="empty" id="howto">
+      她会被生在一个独立目录里（第一次生完成后这里会给出路径）。在 profile 的
+      <code>cordis.patch.yml</code> 里给 <code>dsh-fish</code> 加一条 <code>root</code> 指向那个目录，
+      重启后就是一个新的家；不想开第二个家，就把那个目录里的 <code>接生单.md</code> 整份粘进
+      dsh-fish 的「粘贴交接单」。
+    </p>
+  </div>
+
+  <div class="toast" id="toast"></div>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const API = '/dsh-fish-kin';
+let kids = [];
+
+function toast(msg) {
+  const t = $('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toast._t);
+  toast._t = setTimeout(() => t.classList.remove('show'), 3800);
+}
+
+async function get(path) {
+  const r = await fetch(API + path, { headers: { accept: 'application/json' } });
+  return r.json();
+}
+
+async function post(path, body) {
+  const r = await fetch(API + path, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(body || {}),
+  });
+  return r.json();
+}
+
+function setRing(level, pressure) {
+  const ring = $('ring');
+  ring.classList.remove('hot', 'warm');
+  if (level === 'hot') ring.classList.add('hot');
+  if (level === 'warm') ring.classList.add('warm');
+  ring.style.setProperty('--p', Math.round(Math.min(1, pressure) * 100));
+  $('pct').textContent = Math.round(Math.min(1, pressure) * 100) + '%';
+}
+
+function renderState(s) {
+  const p = s.parent;
+  $('paths').textContent = '母代：' + p.root;
+  $('counts').innerHTML =
+    '<b>' + p.spanDays + '</b> 天 · <b>' + p.count + '</b> 条记忆 · <b>' + p.chars + '</b> 字'
+    + (p.skipped ? ' · 跳过 ' + p.skipped + ' 行坏数据' : '')
+    + ' · 她是第 <b>' + s.kin.generation + '</b> 代，已生 <b>' + s.kin.children + '</b> 个';
+  setRing(s.pressure.level, s.pressure.pressure);
+  $('headline').textContent = s.pressure.headline;
+  $('reasons').innerHTML = s.pressure.reasons.map((r) => '<li>' + r + '</li>').join('')
+    + (s.pressure.context ? '<li style="opacity:.7">' + esc(s.pressure.context) + '</li>' : '');
+
+  const pend = s.pending || [];
+  if (!pend.length) {
+    $('pending').innerHTML = '<p class="empty">没有待批的单子。她可以开口要，阈值也可以提醒，但都得等你点头。</p>';
+  } else {
+    $('pending').innerHTML = pend.map((r) =>
+      '<div class="req">' +
+        '<div class="top"><b>' + (r.trigger === 'her' ? '她自己开口要的' : '记忆压力到了提的') + '</b>' +
+        '<span class="badge">' + r.items + ' 条 / ' + r.chars + ' 字</span>' +
+        '<span class="id">' + r.id + '</span></div>' +
+        (r.note ? '<div class="empty">' + esc(r.note) + '</div>' : '') +
+        '<div class="acts">' +
+          '<button class="primary" data-approve="' + r.id + '">批准（真的生）</button>' +
+          '<button data-reject="' + r.id + '">驳回</button>' +
+        '</div>' +
+      '</div>').join('');
+  }
+}
+
+function esc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+function renderPreview(p) {
+  const c = p.coverage;
+  const kin = p.kin && p.kin.ok ? '族谱检查：没有和已有的孩子撞底子。' : '族谱检查：' + (p.kin ? p.kin.why : '未知');
+  $('preview-box').innerHTML =
+    '<p class="stat">候选 <b>' + c.candidates + '</b> 条 · 进包 <b>' + c.picked + '</b> 条 · 其余 <b>' + c.dropped + '</b> 条留在她的事件流里（不进包不等于被删）</p>' +
+    '<p class="stat">' + esc(kin) + '</p>' +
+    '<pre>' + esc(p.pack.body) + '</pre>' +
+    '<p class="stat">共 <b>' + p.pack.chars + '</b> 字（上限 ' + p.pack.limit + '）' + (p.name ? ' · 继承称呼「' + esc(p.name) + '」' : '') + '</p>';
+}
+
+function renderLineage(v) {
+  kids = v.lines || [];
+  const sel = $('teach-child');
+  const keep = sel.value;
+  sel.innerHTML = kids.length
+    ? kids.map((l) => '<option value="' + l.childId + '">' + (l.childName || l.childId.slice(0, 12)) + '（第 ' + l.generation + ' 代）</option>').join('')
+    : '<option value="">（还没有孩子）</option>';
+  if (keep) sel.value = keep;
+  if (!kids.length) {
+    $('lineage').innerHTML = '<p class="empty">族谱还是空的。她还没有生过孩子。</p>';
+    return;
+  }
+  $('lineage').innerHTML =
+    '<table><thead><tr><th>代</th><th>她</th><th>出生</th><th>谁决定的</th><th>带走</th><th>存档</th></tr></thead><tbody>' +
+    v.lines.map((l) => '<tr>' +
+      '<td class="mono">' + l.generation + '</td>' +
+      '<td>' + esc(l.childName || '(没起名)') + '</td>' +
+      '<td class="mono">' + esc(String(l.at).slice(0, 16).replace('T', ' ')) + '</td>' +
+      '<td>' + (l.trigger === 'her' ? '她要的' : l.trigger === 'auto' ? '压力到了' : '主人要的') + '</td>' +
+      '<td class="mono">' + l.packChars + ' 字</td>' +
+      '<td><a href="' + API + '/api/child/' + l.childId + '/handover" target="_blank">接生单</a></td>' +
+    '</tr>').join('') + '</tbody></table>';
+}
+
+async function loadConfig() {
+  try {
+    const c = await get('/api/config');
+    if (!c.ok) return;
+    const g = c.config;
+    $('cfg-events').value = g.pressure.events;
+    $('cfg-chars').value = g.pressure.chars;
+    $('cfg-days').value = g.pressure.days;
+    $('cfg-cooldown').value = g.auto.cooldownEvents;
+    $('cfg-boundaries').value = g.birth.maxBoundaries;
+    $('cfg-beliefs').value = g.birth.maxBeliefs;
+    $('cfg-presence').value = (g.presence && g.presence.detail) || 'age';
+    $('cfg-auto').checked = g.auto.propose === true;
+    $('cfg-name').checked = g.birth.inheritName !== false;
+  } catch (err) {
+    toast('读不到环境参数：' + err.message);
+  }
+}
+
+const num = (id) => {
+  const n = Number($(id).value);
+  return Number.isFinite(n) ? Math.round(n) : undefined;
+};
+
+$('btn-savecfg').onclick = async () => {
+  // 只发白名单里的键；后端也会再筛一遍（网页进不来的东西，别指望前端守）。
+  const patch = {
+    pressure: { events: num('cfg-events'), chars: num('cfg-chars'), days: num('cfg-days') },
+    birth: {
+      inheritName: $('cfg-name').checked,
+      maxBoundaries: num('cfg-boundaries'),
+      maxBeliefs: num('cfg-beliefs'),
+    },
+    auto: { propose: $('cfg-auto').checked, cooldownEvents: num('cfg-cooldown') },
+    presence: { detail: $('cfg-presence').value },
+  };
+  const r = await post('/api/config', patch);
+  if (r.ok) { toast('存好了。'); await loadConfig(); refresh(); }
+  else toast(r.why || '没存成');
+};
+
+
+function renderTeach(t) {
+  const v = (t && t.view) || {};
+  const c = (t && t.candidates) || {};
+  if (!t || !t.ok || !v.ok) {
+    $('teach-box').innerHTML = '<p class="empty">' + esc((t && (t.view && t.view.why || t.candidates && t.candidates.why)) || '还没有孩子。') + '</p>';
+    return;
+  }
+  const cand = (c.items || []).length
+    ? (c.items || []).map((it, i) =>
+        '<div class="req"><div class="top"><b>' + esc(it.text) + '</b>' +
+        '<span class="badge">' + (it.reasons && it.reasons.length ? esc(it.reasons.join('、')) : it.kind) + '</span></div>' +
+        '<div class="acts"><button data-teach-one="' + i + '">教这条</button></div></div>').join('')
+    : '<p class="empty">她出生之后还没长出新的、值得单独教的认知。也可以在上面自己写一句。</p>';
+
+  const taught = (v.lessons || []).length
+    ? (v.lessons || []).map((l) =>
+        '<div class="req"><div class="top">' +
+        '<b>' + esc(l.core) + '</b>' +
+        '<span class="badge" style="' + (l.learned ? 'color:var(--ok);border-color:#3fb95055' : '') + '">' +
+          (l.learned ? '像是学会了' : '还没回声') + '</span>' +
+        '<span class="id">' + esc(String(l.at).slice(0, 16).replace('T', ' ')) + '</span>' +
+        (l.by === 'her' ? '<span class="badge">她自己要教的</span>' : '') +
+        '</div>' +
+        (l.echo ? '<div class="empty">她后来自己说过：「' + esc(l.echo.text) + '」（相似 ' + l.echo.similarity + '）</div>' : '') +
+        '</div>').join('')
+    : '<p class="empty">还没教过。她出生时拿走的是那一天的她；之后她再想通什么，就靠这里传过去。</p>';
+
+  $('teach-box').innerHTML =
+    '<p class="stat">这个孩子已经学了 <b>' + (v.total || 0) + '</b> 课，其中 <b>' + (v.learnedCount || 0) + '</b> 课有回声。' +
+    '（她现在是第 ' + (v.day || 1) + ' 天）</p>' +
+    '<h2 style="margin:14px 0 6px">该教什么</h2>' + cand +
+    '<h2 style="margin:14px 0 6px">已经教过</h2>' + taught;
+}
+
+async function loadTeach() {
+  const id = $('teach-child').value;
+  if (!id) { $('teach-box').innerHTML = '<p class="empty">她还没有孩子。生一个之后就能教她。</p>'; return; }
+  try {
+    const t = await get('/api/teach?childId=' + encodeURIComponent(id));
+    renderTeach(t);
+  } catch (err) {
+    $('teach-box').innerHTML = '<p class="empty">读不到课表：' + esc(err.message) + '</p>';
+  }
+}
+
+async function doTeach(payload) {
+  const id = $('teach-child').value;
+  if (!id) { toast('她还没有孩子。'); return; }
+  const r = await post('/api/teach', { childId: id, ...payload });
+  toast(r.ok ? '教了 ' + (r.lessons || []).length + ' 课。' : (r.why || '没教成'));
+  if (r.ok) { await loadTeach(); refresh(); }
+}
+
+$('btn-teach-auto').onclick = () => doTeach({});
+$('btn-teach-one').onclick = () => {
+  const text = $('teach-text').value.trim();
+  if (!text) { toast('先写一句。'); return; }
+  doTeach({ text }).then(() => { $('teach-text').value = ''; });
+};
+$('teach-child').onchange = loadTeach;
+
+document.addEventListener('click', (e) => {
+  const i = e.target.getAttribute && e.target.getAttribute('data-teach-one');
+  if (i === null || i === undefined) return;
+  const t = $('teach-box');
+  const cards = t.querySelectorAll('.req');
+  const card = e.target.closest('.req');
+  const text = card ? (card.querySelector('b') || {}).textContent : '';
+  if (text) doTeach({ text });
+});
+
+$('btn-teach-spoken').onclick = async () => {
+  const id = $('teach-child').value;
+  if (!id) { toast('她还没有孩子。'); return; }
+  $('teach-box').innerHTML = '<p class="empty">已经叫醒她一次，等她说完…（最多两分钟。这一步会真的花掉她一个回合）</p>';
+  const r = await post('/api/teach/spoken', { childId: id });
+  toast(r.ok ? '她说了一句：' + (r.spoken || '') : (r.why || '没说成'));
+  await loadTeach();
+  refresh();
+};
+
+async function refresh() {
+  try {
+    const s = await get('/api/state');
+    if (!s.ok && s.why) { toast(s.why); return; }
+    renderState(s);
+    const v = await get('/api/lineage');
+    renderLineage(v);
+    await loadTeach();
+  } catch (err) {
+    toast('读不到状态：' + err.message);
+  }
+}
+
+$('btn-preview').onclick = async () => {
+  $('preview-box').innerHTML = '<p class="empty">正在读她的记忆并蒸馏…（记忆多的时候要几秒）</p>';
+  try {
+    const p = await get('/api/preview');
+    if (!p.ok) { toast(p.why || '失败'); return; }
+    renderPreview(p);
+  } catch (err) { toast('失败：' + err.message); }
+};
+
+$('btn-request').onclick = async () => {
+  const label = $('label').value.trim();
+  const r = await post('/api/request', { label });
+  if (r.ok) { toast('立了一张待批的单子。批了才会真的生。'); refresh(); }
+  else toast(r.why || '没立成');
+};
+
+$('btn-birth').onclick = async () => {
+  const label = $('label').value.trim();
+  if (!confirm('这会真的在盘上建一个孩子的存档目录（不会改动她现有的任何一条记忆）。继续吗？')) return;
+  const r = await post('/api/birth', { confirm: 'birth', label });
+  if (r.ok) {
+    toast('生了：' + r.dir);
+    $('howto').innerHTML = '孩子在这里：<code>' + esc(r.dir) + '</code><br>' +
+      '给 <code>dsh-fish</code> 加一条 <code>root</code> 指向它，重启后就是新的一个家；' +
+      '或者把那个目录里的 <code>接生单.md</code> 粘进「粘贴交接单」。';
+    refresh();
+  } else toast(r.why || '没生成');
+};
+
+document.addEventListener('click', async (e) => {
+  const a = e.target.getAttribute && e.target.getAttribute('data-approve');
+  const rj = e.target.getAttribute && e.target.getAttribute('data-reject');
+  if (a) {
+    if (!confirm('批准之后会真的生一个孩子，用的是这张单子里那份遗传包。')) return;
+    const r = await post('/api/approve', { id: a, label: $('label').value.trim() });
+    toast(r.ok ? '生了：' + r.dir : (r.why || '没生成'));
+    refresh();
+  }
+  if (rj) {
+    const why = prompt('驳回的理由（可以不写）：') || '';
+    const r = await post('/api/reject', { id: rj, why });
+    toast(r.ok ? '驳掉了。' : (r.why || '没驳成'));
+    refresh();
+  }
+});
+
+refresh();
+loadConfig();
+loadTeach();
+</script>
+</body>
+</html>

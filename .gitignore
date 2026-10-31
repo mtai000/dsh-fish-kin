@@ -1,0 +1,17 @@
+# 打包产物
+*.tgz
+
+# 依赖与构建
+node_modules/
+dist/
+
+# 本地运行时数据（她的记忆、凭据、归档）
+.dsh-fish-kin/
+archive/
+*.log
+
+# 编辑器/系统
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
