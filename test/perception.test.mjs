@@ -330,3 +330,23 @@ test('P3：批准 source-act = 发通行证（单子留着，守卫用一次）'
     assert.ok(findGrantSync(root, 'act_a'))
   })
 })
+
+test('P4：接外部源只写配置，本仓库不出现那个插件的代码', async () => {
+  const { linkSource, listSources } = await import('../lib/perception/link.js')
+  await withTemp(async (root) => {
+    const r = await linkSource(root, { id: 'cdda', title: '去游戏里走走', read: 'observe_game', act: 'move_in_game', budget: 1 })
+    assert.equal(r.ok, true, r.why)
+    assert.equal(r.source.adapter, 'external')
+    assert.deepEqual(r.source.read, ['observe_game'])
+    assert.deepEqual(r.source.act, ['move_in_game'])
+    assert.equal(r.source.budget.perDay, 1)
+
+    const list = await listSources(root)
+    assert.equal(list.length, 1)
+    assert.equal(list[0].id, 'cdda')
+
+    // 校验拦得住空源
+    const bad = await linkSource(root, { id: 'x', read: [], act: [] })
+    assert.equal(bad.ok, false)
+  })
+})
