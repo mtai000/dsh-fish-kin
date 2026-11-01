@@ -293,6 +293,7 @@ test('B 站路由：status / config / run 都走 fishBili 服务，没有服务�
   const calls = []
   const fake = {
     status: async () => ({ today: '2026-11-01', pickedToday: 2 }),
+    connection: async (force) => ({ state: 'ok', verified: true, force: force === true }),
     saveConfig: async (p) => { calls.push(['save', p]); return { ok: true, bili: { enabled: false } } },
     runNow: async () => ({ ok: true, started: true }),
   }
@@ -306,6 +307,10 @@ test('B 站路由：status / config / run 都走 fishBili 服务，没有服务�
   const r = await api.biliRun()
   assert.equal(r.code, 200)
   assert.equal(r.json.started, true)
+  const conn = await api.biliConnection({}, { force: true })
+  assert.equal(conn.code, 200)
+  assert.equal(conn.json.state, 'ok')
+  assert.equal(conn.json.force, true)
 
   const gone = makeApi({ parentRoot: '/tmp/x', ctx: { get: () => null } })
   await assert.rejects(() => gone.biliStatus(), /B站子系统不在/)
@@ -426,5 +431,30 @@ test('装环境/登录/改配置是主人工具：她在自己家调用会被挡
       assert.equal(r.ok, false, `${name} 应该被挡`)
       assert.match(r.error, /主人/)
     }
+  })
+})
+
+test('登录二维码：画失败时绝不返回上一张过期图；成功才返回新图', async () => {
+  if (process.platform === 'win32') return // 这个用例用 sh 假解释器，Windows 跳过
+  const { renderQrPng } = await import('../lib/bili/login.js')
+  const { chmod, writeFile: wf } = await import('node:fs/promises')
+  const { existsSync } = await import('node:fs')
+  await withTemp(async (dir) => {
+    const fakeOk = join(dir, 'fake-python-ok')
+    await wf(fakeOk, '#!/bin/sh\nout="$4"\nprintf "NEWPNG" > "$out"\nexit 0\n', 'utf8')
+    await chmod(fakeOk, 0o755)
+    const png = join(dir, 'qrcode_login.png')
+    await wf(png, 'OLDPNG', 'utf8')
+    const got = await renderQrPng(fakeOk, dir, 'https://example.com/qr')
+    assert.equal(got, png)
+    assert.equal(await readFile(png, 'utf8'), 'NEWPNG')
+
+    const fakeBad = join(dir, 'fake-python-bad')
+    await wf(fakeBad, '#!/bin/sh\nexit 1\n', 'utf8')
+    await chmod(fakeBad, 0o755)
+    await wf(png, 'OLDPNG', 'utf8')
+    const bad = await renderQrPng(fakeBad, dir, 'https://example.com/qr')
+    assert.equal(bad, null)
+    assert.equal(existsSync(png), false, '画失败后不能把旧二维码留在盘上')
   })
 })
