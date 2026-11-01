@@ -32,11 +32,12 @@ function fakeReq(method, url, body) {
   }
 }
 
-async function harness(dir) {
+async function harness(dir, { registry = null } = {}) {
   await writeParent(join(dir, 'parent'), sampleHistory())
   const registered = []
+  const web = { register: (ex) => { registered.push(ex); return () => { registered[0].disposed = true } } }
   const ctx = {
-    get: () => ({ register: (ex) => { registered.push(ex); return () => { registered[0].disposed = true } } }),
+    get: (k) => (k === 'workspaceRegistry' ? registry : web),
   }
   const dispose = registerKinRoutes(ctx, { parentRoot: join(dir, 'parent'), kinRoot: join(dir, 'kin') })
   const handler = registered[0].handler
@@ -290,5 +291,28 @@ test('工作区接口：家唯一，串门是另一个列表', async () => {
     const saved = JSON.parse((await h.call('POST', '/api/workspaces', { visits: ['D:/proj'] })).body)
     assert.equal(saved.ok, true)
     assert.deepEqual(saved.visits, ['D:/proj'])
+  })
+})
+
+
+test('工作区接口：返回 DSH 左侧工作区，供串门直接选', async () => {
+  await withTemp(async (dir) => {
+    const registry = {
+      list: () => [
+        { id: 'ws1', title: 'dsh_play_cdda', path: '/home/vbox/Desktop/dsh_play_cdda' },
+        { id: 'ws2', title: '简历', path: '/home/vbox/Desktop/简历' },
+      ],
+    }
+    const h = await harness(dir, { registry })
+    const r = JSON.parse((await h.call('GET', '/api/workspaces')).body)
+    assert.equal(r.ok, true)
+    assert.equal(r.dshWorkspaces.length, 2)
+    assert.equal(r.dshWorkspaces[0].title, 'dsh_play_cdda')
+    assert.equal(r.dshWorkspaces[0].path, '/home/vbox/Desktop/dsh_play_cdda')
+    assert.equal(r.dshWorkspaces[0].visit, false)
+
+    await h.call('POST', '/api/workspaces', { visits: ['/home/vbox/Desktop/dsh_play_cdda'] })
+    const r2 = JSON.parse((await h.call('GET', '/api/workspaces')).body)
+    assert.equal(r2.dshWorkspaces[0].visit, true)
   })
 })
