@@ -476,3 +476,30 @@ test('只在谷时跑：高峰时间点顺延到谷时，不会因为高峰被�
   assert.equal(d.key, '14:00')
   assert.equal(d.slot.getHours(), 18)
 })
+
+test('转写状态：依赖装了但模型没下会明确说「模型未就绪」', async () => {
+  const { modelCacheReady, asrState } = await import('../lib/bili/install.js')
+  if (process.platform === 'win32') return
+  const { chmod } = await import('node:fs/promises')
+  await withTemp(async (base) => {
+    const root = join(base, 'fish')
+    const cache = join(root, 'bili', '.hf-cache')
+    await mkdir(join(cache, 'hub', 'models--Systran--faster-whisper-small'), { recursive: true })
+    const cfg = normalize({ transcribe: { enabled: true, model: 'small' }, asrCache: cache })
+    assert.equal(modelCacheReady(root, cfg), true)
+    assert.equal(modelCacheReady(root, normalize({ transcribe: { model: 'medium' }, asrCache: cache })), false)
+
+    const fake = join(base, 'fake-python')
+    await writeFile(fake, '#!/bin/sh\nexit 0\n', 'utf8')
+    await chmod(fake, 0o755)
+    const st = await asrState(root, normalize({ transcribe: { model: 'small' }, asrPython: fake, asrCache: cache }))
+    assert.equal(st.ready, true)
+    assert.equal(st.modelReady, true)
+    assert.equal(st.model, 'small')
+
+    const noModel = await asrState(root, normalize({ transcribe: { model: 'medium' }, asrPython: fake, asrCache: cache }))
+    assert.equal(noModel.ready, true)
+    assert.equal(noModel.modelReady, false)
+    assert.match(noModel.reason, /模型还没下载/)
+  })
+})
