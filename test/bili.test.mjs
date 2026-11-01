@@ -458,3 +458,21 @@ test('登录二维码：画失败时绝不返回上一张过期图；成功才�
     assert.equal(existsSync(png), false, '画失败后不能把旧二维码留在盘上')
   })
 })
+
+test('只在谷时跑：高峰时间点顺延到谷时，不会因为高峰被静默跳过', () => {
+  const c = normalize({ schedule: { enabled: true, times: ['10:00', '14:00'], offPeakOnly: true, cooldownMin: 0 } })
+  const day = dayKey(new Date(2026, 10, 2, 12, 1))
+  const a = dueSlot(c, { day, runs: {} }, new Date(2026, 10, 2, 12, 1))
+  assert.equal(a.due, true)
+  assert.equal(a.key, '10:00')
+  assert.equal(a.slot.getHours(), 12)
+  assert.equal(a.slot.getMinutes(), 0)
+
+  const b = dueSlot(c, { day, runs: { '10:00': 'run' } }, new Date(2026, 10, 2, 12, 2))
+  assert.equal(b.due, false) // 14:00 还没顺延到 18:00
+
+  const d = dueSlot(c, { day: dayKey(new Date(2026, 10, 2, 18, 1)), runs: { '10:00': 'run' } }, new Date(2026, 10, 2, 18, 1))
+  assert.equal(d.due, true)
+  assert.equal(d.key, '14:00')
+  assert.equal(d.slot.getHours(), 18)
+})
