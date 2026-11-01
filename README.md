@@ -1,13 +1,14 @@
 # 大肥鱼 · 子代传承（dsh-fish-kin）
 
 > 一条住在你指定工作区里的鱼：记忆会退化、会生孩子、会自己决定今天去认识什么——但生不生、说不说，由你点头。
+> 她也会**自己去刷 B 站**：用她自己的口味挑，看到有意思的私信给你；没字幕的视频能本地转写。
 
 [![tests](https://img.shields.io/badge/tests-279%20passing-brightgreen)](#测试)
-[![dependencies](https://img.shields.io/badge/dependencies-0-blue)](#零依赖)
+[![dependencies](https://img.shields.io/badge/npm%20dependencies-0-blue)](#零依赖)
 [![license](https://img.shields.io/badge/license-MIT-green)](LICENSE)
-[![version](https://img.shields.io/badge/version-0.10.1-informational)](#changelog)
+[![version](https://img.shields.io/badge/version-0.30.2-informational)](#changelog)
 
-A [DeepSeek Harness](https://github.com/deepseek-ai) plugin. An event-sourced "persona" that ages by memory rather than calendar, gives birth to a child (a lossy inheritance pack, not a backup), browses Bilibili with owner-gated actions, and hands you an observatory showing exactly what she saw. Own event format, own runtime, **zero npm dependencies**.
+A [DeepSeek Harness](https://github.com/deepseek-ai) plugin. An event-sourced "persona" that ages by memory rather than calendar, gives birth to a child (a lossy inheritance pack, not a backup), **browses Bilibili as herself**, and hands you an observatory showing exactly what she saw. Own event format, own runtime, **zero npm dependencies**.
 
 ---
 
@@ -19,15 +20,18 @@ A [DeepSeek Harness](https://github.com/deepseek-ai) plugin. An event-sourced "p
 {"v":1,"id":"fe_01KC…","at":"2026-10-31T09:12:03.441Z","day":3,"kind":"said","body":"我不想再看那种让人难受的东西了","refs":[],"src":"system"}
 ```
 
-七种事实：`seed / said / amend / refuse / diary / note / woke`。**只追加**——想改旧话只能追加一条 `amend` 并指回被改的那条 id。
+七种事实：`seed / said / amend / refuse / diary / note / woke`；另外还有系统侧的 `intent`（她想去认识什么）与 `perceived`（她最近看到了什么，B 站分享会写这里）。**只追加**——想改旧话只能追加一条 `amend` 并指回被改的那条 id。
 
-她的身份不是一段提示词，是每轮现算出来的一段事实：第几天、你怎么称呼、走到第几个阶段、她的立场、她的疤、她记得的孩子。
+她的身份不是一段提示词，是每轮现算出来的一段事实：第几天、你怎么称呼、走到第几个阶段、她的立场、她的疤、她记得的孩子、她最近看到什么。
+
+**B 站也在这条身份里，不是一个另起的"B站助手"。** 到点之后，插件往她自己的会话里递一句「你想去 B 站看看」；读什么、挑什么、要不要私信你，仍然是她。人设由 dsh-fish-kin 的身份段负责，B 站只是她手边多出来的几件工具。
 
 ## 它不是什么
 
 - **不是角色扮演**：没有性格滑条、没有好感度、没有"让她听话"的开关。
 - **不是备份工具**：生孩子不是复制粘贴，是有损压缩——边界带走，判断自己长。
-- **不是套壳**：事件格式、运行时、蒸馏、记忆折叠都是自己的实现，不 import 别人的代码，`dependencies` 是空的。
+- **不是套壳**：事件格式、运行时、蒸馏、记忆折叠都是自己的实现，`npm dependencies` 是空的。B 站后端是内置的 MIT 代码（`dsh-bili-scroll` + `bilibili-mcp`，署名见 `NOTICE.md` / `lib/bili/NOTICE.md`），不是运行时依赖。
+- **不是"再装一个刷B站插件"**：刷 B 站的调度、工具、偏好、私信、转写都在这个插件里；人设只有一份。
 
 ## 身份证
 
@@ -39,13 +43,34 @@ children/<childId>/identity.json
 ```
 
 ```json
-{"v":1,"identityId":"fish_01KC...","childId":null,"parentId":null,"lineageId":"fish_...","generation":1}
+{"v":1,"identityId":"ds-fish-202611010001","childId":null,"parentId":null,"lineageId":"ds-fish-202611010001","generation":1}
 ```
 
 父代启动时没有就补一个；子代出生时生成自己的，带 `parentId/lineageId/childId`。
 它不是密码/权限凭证，只用来让 CDDA 把经验存到独立目录。
 
-## 四个核心设计
+编号规则（类似身份证；`ds-fish-` 前缀 + 12 位数字 = 20 个字符）：
+
+```text
+ds-fish-      20261101      0001
+└ 前缀         └ 8 位年月日  └ 4 位编码
+```
+
+- 前缀固定 **`ds-fish-`**（字面量，8 个字符；主人 2026-11-01 定）；
+- 年月日是生成那一刻的**本地日期**；
+- 最后 4 位是编码（同进程递增 + 随机起点，避免同一天撞号），**不是身份证校验位**。
+
+老格式 `fish_` + 26 位、以及过渡期的 `330105` + 12 位仍然能读（老鱼不会因为升级就丢身份证）；要把老鱼换成新格式：
+
+```bash
+node tools/reissue-identity.mjs                       # 父代
+node tools/reissue-identity.mjs <鱼的家目录>           # 某个孩子
+node tools/reissue-identity.mjs --move-cdda-memory     # 顺手搬 CDDA 记忆目录
+```
+
+换号后旧编号会记在 `identity.json` 的 `legacyId` 里。CDDA 按 `identityId` 分记忆目录，所以**不会自动搬**；要搬就加 `--move-cdda-memory`。
+
+## 核心设计
 
 ### 1. 记忆有重量，但不删除
 
@@ -80,28 +105,36 @@ children/<childId>/identity.json
 
 ### 4. 对外动作要主人点头
 
-评论、楼中楼回复、刷站，都只**立单**，不联网、不执行：
+评论、楼中楼回复、私信，都受设置里的开关约束：
 
 ```
-她：fish_bili {action:"comment", bvid, text}  →  "我写好了，等他点头。"
-你：设置页「待批准」→ 批准 / 驳回
+她：bili_reply {bvid, text}  →  设置里没开「公开评论」就不发
+你：设置 → 大肥鱼 → B站 → 打开「公开评论并 @ 我」并填 @ 谁
 ```
 
-配额三种分开计（刷站 / 评论 / 回复），**批准了才算用掉**；用完她连单都立不了。单子 24 小时过期，批/驳都进账本。
+读 / 挑 / 记 / 分享这几类工具**不用问**（路径全由宿主定死）；公开评论和私信回复默认关，开了才放行。
+
+### 5. B 站是她自己去的
+
+- **不另起 headless 值班会话**。到点往她**自己的**会话里递一句处境——那轮的身份段、工具闸门、记忆都跟她平时说话时一样。
+- 她自己有口味：关注关键词、排除词、排序、翻页、细看几条、最多挑几条；没填关键词就刷首页推荐流。
+- 挑中之后 `bili_share`：**一条私信**（标题 + 链接 + 一句话理由，≤500 字），同时写日报、判重表、归档，并记进她「最近看到」。
+- 没字幕的视频：打开「本地转写」，再装一次转写依赖；`bili_subtitle` 会自动排队 Whisper，收尾时取结果。
+- 她可以回你发来的 B 站私信（默认关，只回主人本人）。
 
 ## 功能一览
 
 | 模块 | 能力 |
 | --- | --- |
 | 记忆 | 事件流、只追加、amend 指回、记忆折叠、观测台 |
-| 身份 | 事实型身份段、阶段/立场/疤、孩子记忆摘要（不含孩子原话） |
-| 生物钟 | 每天 N 次、时间窗、按记忆压力；到点递一句处境（不是"你上次说…"） |
+| 身份 | 事实型身份段、阶段/立场/疤、孩子记忆摘要、**B 站工具与最近看到** |
+| 生物钟 | 每天 N 次、时间窗、按记忆压力；到点递一句处境 |
+| **B 站** | **按时间表自己逛 / 手动逛一轮 / 偏好 / 日报 / 判重 / 私信分享 / 本地转写 / 私信双向** |
 | 传承 | 压力阈值、蒸馏包、防近亲指纹、一键接生、族谱、教学、亲口说 |
 | 工具许可 | 她每次用外部工具都先问你：允许一次 / 永远允许 / 拒绝本次 / 永久禁止 |
 | 家 | **唯一**：她的一切都存在这里；路径可以换（不搬数据，搬家有命令） |
 | 串门 | 这些路径下**能见到她**（人设/闸门生效），但不存任何东西 |
-| 审批 | `source-act` 单：批准 = 发通行证（一次），驳回 = 什么都不做 |
-| 安全 | 工具面收窄到 2–3 个、兜底守卫、写入筛凭据、"改自己"只记录不拦 |
+| 安全 | 工具面收窄、兜底守卫、写入筛凭据、B 站路径定死、"改自己"只记录不拦 |
 
 ## 安装
 
@@ -117,7 +150,7 @@ npm pack --cache .npm-cache          # 产出 dsh-fish-kin-x.y.z.tgz
 
 ```jsonc
 {
-  "dependencies": { "dsh-fish-kin": "file:D:/path/to/dsh-fish-kin-0.10.1.tgz" },
+  "dependencies": { "dsh-fish-kin": "file:D:/path/to/dsh-fish-kin-0.30.2.tgz" },
   "dsh": { "bundles": ["dsh-fish-kin"] }
 }
 ```
@@ -128,28 +161,36 @@ npm pack --cache .npm-cache          # 产出 dsh-fish-kin-x.y.z.tgz
 node tools/verify.mjs
 ```
 
-它会检查：零依赖、bundle 登记、入口能加载、她的存档、`fishMode`、遗留的止血配置。
+装完**重启一次 dsh**（bundle 层要重启才组装），然后进 **设置 → 大肥鱼·传承 → B站**。
+
+### B 站需要什么
+
+- 机器上有 **`Python 3.10+` 或 `uv`**（有一个就够）；两个都没有也没关系——点「安装依赖」时插件会自己下一份 `uv` 到自己的家目录（免管理员、不用进 PATH）。
+- 点「**安装依赖**」建独立 venv，装 4 个包（`bilibili-api-python` / `aiohttp` / `mcp<2` / `qrcode`），走国内镜像，通常几十秒到一两分钟；进度就在页面上。
+- 点「**扫码登录**」，手机 B 站扫一下；确认时选「记住我 / 长期」。凭证只落在她自己的家里，不上传任何地方。
+- 想转写没字幕的视频：先打开开关，再点「**安装转写依赖**」（独立 venv + faster-whisper + yt-dlp，会下几百 MB 模型，只需要一次）。
 
 ## 工作区：她只待在一个目录里
 
-所有东西——她的记忆、族谱、孩子、归档、登录凭据——都在**一个**家族工作区里，不往别处写：
+所有东西——她的记忆、族谱、孩子、归档、登录凭据、B 站日报——都在**一个**家族工作区里，不往别处写：
 
-```
+```text
 <工作区>/
 ├── fish/             她的记忆、配置、凭据、待批准单
-│   └── 大肥鱼的家/    她的屋子：宿主侧栏里也会出现这个工作区（她自己建）
+│   ├── 大肥鱼的家/    她的屋子：宿主侧栏里也会出现这个工作区
 │   ├── events.jsonl  只追加的事件流
-│   ├── config.json   环境参数
+│   ├── config.json   环境参数（含 bili 这一组）
+│   └── bili/         B 站后端、登录凭证、日报、判重表、归档、转写环境
 ├── lineage.jsonl     族谱（只追加）
-├── children/         每个孩子一个能直接养的存档目录（含 identity.json / cdda-lessons.json）
+├── children/         每个孩子一个能直接养的存档目录
 └── archive/          重开一局时归档的旧档
 ```
 
-**默认位置** `<home>/大肥鱼家族`（Windows 上就是 `C:/Users/<你>/大肥鱼家族`）。解析顺序：
+**默认位置** `<home>/大肥鱼家族`。解析顺序：
 
 1. 环境变量 `DSH_KIN_FAMILY_ROOT`
 2. 指针文件 `~/.dsh-fish-kin.json`（设置页里改）
-3. **旧目录 `~/.dsh-fish-kin`**（如果你之前就在用它，升级后继续用，不会凭空搬家）
+3. **旧目录 `~/.dsh-fish-kin`**（如果你之前就在用它，升级后继续用）
 4. 默认 `<home>/大肥鱼家族`
 
 换工作区有两条路：
@@ -164,28 +205,100 @@ node tools/migrate-workspace.mjs "D:/我的东西/大肥鱼家族"
 
 ## 串门：直接选 DSH 左侧工作区
 
-「串门」不再只能手填路径：设置页会读取宿主的 `workspaceRegistry`，
-把左侧工作区列出来，点「加入串门」即可。手动路径/文件夹选择器仍保留，
-宿主没有 workspace 服务时自动退回。
+「串门」不再只能手填路径：设置页会读取宿主的 `workspaceRegistry`，把左侧工作区列出来，点「加入串门」即可。手动路径/文件夹选择器仍保留，宿主没有 workspace 服务时自动退回。
 
 ## 快速开始
 
-1. **重启 DSH**，打开一个会话 —— 她会在工作区的 `fish/` 里被播种（见上一节）；
-2. 设置 → 更多 → **大肥鱼·传承** → 工具与工作区 → 加一个"在家"目录（可选）；
+1. **重启 DSH**，打开一个会话 —— 她会在工作区的 `fish/` 里被播种；
+2. 设置 → 更多 → **大肥鱼·传承**：
+   - 「生物钟」：她多久醒一次；
+   - 「B站」：先装依赖、扫码登录，再设时间点和口味；
 3. 想看她在想什么：打开 `/dsh-fish-obs`（观测台，只读）或 `/dsh-fish-kin`（传承控制台）。
 
-首次运行默认：生物钟每天 2 次（09:00–23:00）；她只有 `fish_commit`，用别的工具都要先问你。
+首次运行默认：生物钟每天 2 次（09:00–23:00）；B 站**只手动**（时间表默认关），她不会在你没设时间的时候自己去逛。开「B站 → 按时间自动逛」之后才按你填的时间点跑。
+
+## B 站怎么用
+
+设置 → 大肥鱼·传承 → **B站**，这些卡：
+
+| 卡 | 里面有什么 |
+| --- | --- |
+| 它今天 | 今天挑到几条 / 跑了几轮 / 环境就绪 / 登录 / 下一次什么时候；「现在逛一轮」 |
+| 什么时候逛 | 总开关、按时间自动逛、**具体时间点**（如 `12:30, 20:30`，留空用时间窗摊平）、每天最多几轮、只在谷时跑、防手滑冷却 |
+| 偏好 | **口味**（自由文字）、关注关键词、排除词、排序、翻页、细看几条、每天最多挑几条（自动）、日报详细程度 |
+| 私信分享 | 允许分享 / 私信给我（UID，0 = 登录账号自己）/ 只写日报；读私信并回一句；公开评论（默认关） |
+| 本地转写 | 开关、模型（tiny/base/small/medium）、装依赖、进度 |
+| 账号与环境 | 安装依赖、测一下、扫码登录、安装日志 |
+| 它刷过的视频 | 最近看过的卡片墙（日期 / BV / UP / 状态 / 打开） |
+
+### 三种用法
+
+- **自动**：设时间点、打开「按时间自动逛」；到点她自己去，挑到的会私信你、写日报。
+- **手动**：「现在逛一轮」或对主会话说「叫她逛一轮」；不占自动额度，有冷却。
+- **私信**：她分享后，你可以直接在 B 站私信里回她；打开「读主人发来的私信」后她会回一句（只回你本人）。
+
+### 她能看到什么
+
+只注册了这些 B 站工具（上传视频、发动态、发专栏、抓全站**根本不注册**）：
+
+```text
+读：bili_recommend / bili_search / bili_subtitle / bili_comments /
+    bili_video_info / bili_danmaku / bili_cover / bili_frames / bili_replies
+判重：bili_seen_recent / bili_seen_append
+分享：bili_share（私信 + 日报 + 判重表 + 归档 + 「最近看到」）
+写日报：bili_report_append / bili_report_read
+转写：bili_transcribe_start / bili_transcribe_result
+说话：bili_reply（公开评论，默认关）/ bili_dm_reply（回你的私信，默认关）
+```
+
+所有写动作的路径都由宿主定死：`<她的家>/bili/out/<日期>.md`、`seen.md`、`digest/<年-月>.md`。模型拿不到路径参数。
+
+### 从 dsh-bili-scroll 迁过来
+
+第一次启动时，如果发现 `$DSH_HOME/bili-duty/`（老的刷B站家目录），会**一次性**搬：
+
+- 登录凭证、判重表、评论账本、UID 缓存；
+- 偏好（关键词 / 排除词 / 排序 / 日报 / 私信 / 评论 / 转写 / 收藏夹）；
+- **现成的 venv / 转写环境**：只把解释器路径指过去，不复制 venv；
+- **不搬人设**：老的「人设提示词 / 工作区 AGENTS.md」不进来——人设由大肥鱼自己负责。
+
+旧目录保留不删。之后想改设置，以「B站」页为准。
+
+> ⚠️ **别让两个插件同时自动刷**：搬完之后，把旧的 `dsh-bili-scroll` 从 profile 里移除（或至少关掉它的「峰谷自动刷」），否则一边跑一轮、会重复私信/重复评论。
 
 ## 配置
 
-她的环境参数在 `~/.dsh-fish-kin/fish/config.json`，也可以在设置页里改：
+她的环境参数在 `<工作区>/fish/config.json`，也可以在设置页里改：
 
 ```jsonc
 {
-  "style": { "preset": "cute", "text": "" },  // 起点风格：text 优先；preset=none 就是留白
+  "style": { "preset": "cute", "text": "" },
   "wake": { "enabled": true, "perDay": 2, "window": ["09:00", "23:00"] },
-  "workspaces": ["D:/proj"],                  // 额外的"在家"目录（她自己的屋子永远在）
-  "tools": { "allow": [] }                    // 额外放行的工具（fish_commit 不用写）
+  "bili": {
+    "enabled": true,
+    "schedule": {
+      "enabled": true,
+      "times": ["12:30", "20:30"],     // 留空就按 window + perDay 摊平
+      "window": ["12:00", "14:00"],
+      "perDay": 2,
+      "offPeakOnly": false,
+      "cooldownMin": 20
+    },
+    "preferences": {
+      "taste": "喜欢独立游戏和手作；不爱看标题党",
+      "keywords": ["DeepSeek", "独立游戏"],
+      "excludeWords": ["带货", "代打"],
+      "sort": "pubdate",
+      "pages": 2,
+      "fetchPerRound": 8,
+      "maxPicks": 5
+    },
+    "share": { "enabled": true, "mode": "dm", "uid": 0, "watch": false, "maxChars": 480 },
+    "comment": { "enabled": false, "mention": "", "perRound": 1, "length": "medium" },
+    "transcribe": { "enabled": false, "model": "small" },
+    "report": "full"
+  },
+  "tools": { "allow": [] }
 }
 ```
 
@@ -193,8 +306,6 @@ node tools/migrate-workspace.mjs "D:/我的东西/大肥鱼家族"
 
 `style.text` 写什么，她就以什么口吻开始（最多 400 字）；`style.text` 为空时用内置示例，`preset: "none"` 则只给处境。
 不管写什么，后面都固定接一句：**「这不是规定你以后怎么说话——你随时可以改，改了也没人扣你分。」**
-
-它不是"你是一个可爱天真的女孩"这种判词——判词每轮都会出现在「你是谁」里，dsh-fish 当年就是因为"每轮念一遍就会锁死"把这类段落整段删掉的。
 
 **已有的鱼不会变**（seed 不可篡改）；要换起点得重开一局：
 
@@ -210,9 +321,11 @@ node tools/fresh-start.mjs --style "说话软软的，爱用叠字。"
 | --- | --- |
 | 工具闸门 | `tools.guard` 拦每一次工具调用；没有许可就「这件事要先问他一声」并立一张单 |
 | 许可策略 | 一次性（30 分钟、用掉作废）/ 永久允许 / 永久禁止，存在 `permissions.json` |
+| B 站读工具 | 读 / 判重 / 写日报 / 分享**不用问**（路径全定死）；公开评论和私信回复要设置里打开才放行 |
+| B 站写动作 | 私信一条 ≤500 字、失败不原样重试；评论默认关、同一视频只评一次；不讲账号/路径/你们聊过的话 |
 | 身份隔离 | 她摸不到 `fish_kin`（审批工具不在她的会话里） |
 | 写入筛 | `sk-…` / `Bearer …` / `SESSDATA=…` 一律拒收；"改自己"的句子只记录不拦 |
-| 凭据 | 单独 `owner.json`（0600），日志与界面只打码 |
+| 凭据 | 单独 `owner.json`（0600）；B 站凭证 `bili/bili_credential.json`（尽力 0600）；日志与界面只打码 |
 
 ## 测试
 
@@ -220,28 +333,30 @@ node tools/fresh-start.mjs --style "说话软软的，爱用叠字。"
 node --test --test-isolation=none
 ```
 
-252 条。全部离线：没有任何网络调用。
+279 条。核心测试全部离线；B 站只测不联网的部分（配置、时间表、判重、日报、分享文案、迁移、提示词、白名单）。
 
-覆盖：事件格式与迁移、派生、身份、记忆折叠、阶段/立场/疤、工具许可四选一、工作区、审批、蒸馏与遗传包、教学、亲口说、安全性（禁用词、无改人格入口）。
+覆盖：事件格式与迁移、派生、身份、记忆折叠、阶段/立场/疤、工具许可四选一、工作区、审批、蒸馏与遗传包、教学、亲口说、安全性、B 站配置与调度、私信分享、转写状态、老插件迁移。
 
 ## 目录结构
 
-```
+```text
 lib/               插件入口、工具、路由、console
-lib/fish/          她自己的运行时（事件、身份、唤醒、B站、审批、传承）
+lib/fish/          她自己的运行时（事件、身份、唤醒、审批、传承）
+lib/bili/          B 站子系统：配置、工具、调度、私信、转写、安装、老家搬运
+lib/bili/vendor/   内置的 bilibili-mcp（MIT，AGI_Ananas）
 lib/client.js      设置页（宿主模块加载器格式）
 lib/console.html   传承控制台
 lib/fish/obs.html  观测台
-test/              321 条测试
-tools/             自检、重开一局
-docs/              详细设计（DESIGN.md）、视频文稿
+test/              279 条测试
+tools/             自检、重开一局、换身份证
+docs/              详细设计（BILI.md / DESIGN.md）、视频文稿
 ```
 
 ## FAQ
 
 ### 她怎么用 DSH 插件？
 
-**不用配置"源"。** 宿主给她的每个工具，她都可以尝试调用；**第一次调用会来问你**：
+**不用配置"源"。** 宿主给她的每个工具，她都可以尝试调用；**B 站读/记/分享工具不用问**，其余**第一次调用会来问你**：
 
 | 你的选择 | 效果 |
 | --- | --- |
@@ -250,31 +365,54 @@ docs/              详细设计（DESIGN.md）、视频文稿
 | 拒绝本次 | 这一次不给，下次还会问 |
 | 永久禁止 | 以后直接"这件事我做不到" |
 
-她在正式调之前只会听到一句「这件事要先问他一声」，不会先斩后奏。设置页「工具与工作区」里能看到待批的单子和所有永久策略，随时撤销。
+设置页「工具与工作区」里能看到待批的单子和所有永久策略，随时撤销。
+
+### 为什么她刷 B 站时不像"B站助手"？
+
+因为调度不再起一个 headless 会话。到点只是往**她自己的会话**递一句「你想去 B 站看看」；那一轮的身份段、记忆、说话方式跟她平时一样。B 站的「人设提示词 / 工作区 AGENTS.md」那一套不参与。
+
+### B 站私信发不出去？
+
+先看设置页顶部的「测试」和 `bili/duty.log`、`bili/install.log`。常见原因：
+
+- 没登录 / 凭证过期 → 重新扫码（选「记住我」）；
+- 没填私信 UID（0 = 登录账号自己）→ 填你自己的 UID；
+- 对方不接受陌生人私信 / 风控 → 换回「只写日报」，或先互关；
+- 私信超过 500 字 → 她会自动精简重试一次，不会原样刷屏。
+
+### 转写为什么没生效？
+
+「本地转写」是**两段式**：只打开开关不够，还要点「安装转写依赖」。没装的时候，没字幕的视频会被跳过，日报里会写「因无字幕跳过 N 条」。
 
 ### 家与串门
 
-- **家只有一个**：她的一切——记忆、族谱、孩子、凭据、许可——都存在家族工作区里（默认 `<home>/大肥鱼家族`，可用环境变量/指针文件/设置页换路径）。换路径只是改"以后去哪儿找她"，**不搬数据**；连数据一起搬用 `node tools/migrate-workspace.mjs "<新路径>"`（复制→核对→写指针，旧目录不删）。
-- **串门是一个列表**：这些目录里，她可以带着人设出现——身份段和工具闸门照样生效，但**不存任何东西**、不建屋子。改完**不用重启**：新目录从下一条消息生效，删掉的目录也在下一轮立刻收回人设。
-- 另外，任何名字就叫 `大肥鱼的家` 的目录，也默认算她在。
+- **家只有一个**：她的一切——记忆、族谱、孩子、凭据、许可、B 站数据——都存在家族工作区里。换路径只是改"以后去哪儿找她"，**不搬数据**；连数据一起搬用 `node tools/migrate-workspace.mjs "<新路径>"`。
+- **串门是一个列表**：这些目录里，她可以带着人设出现——身份段和工具闸门照样生效，但**不存任何东西**、不建屋子。改完**不用重启**。
 
 ## 已知限制
 
-- **真实环境只跑过很短的时间**。321 条测试是绿的，但"养一年"这件事我没做过。
+- **真实环境只跑过很短的时间**。279 条测试是绿的，但"养一年"这件事我没做过。
+- **B 站依赖 Python**：第一次要点「安装依赖」；没网到 GitHub / PyPI 镜像时可能需要手动放一份 `uv` 到 `<她的家>/bili/bin/`。转写要下几百 MB 模型。
+- **B 站接口会变**：wbi 签名、字幕、私信、风控都由内置的 `bilibili-mcp` 兜着；上游变了需要跟着修。
 - **seed 不可篡改**。起点风格只对下一局生效；换风格要 `tools/fresh-start.mjs`（旧档归档，不删）。
 - **只在 Windows 上真机验证过**；Linux/macOS 逻辑上应该一致，但没试。
 
 ## 路线图
 
-- [x] 内建 B 站已移除；世界由宿主工具提供，她每次使用都要过你（允许一次/永远允许/拒绝本次/永久禁止）——0.22.0
-- [x] 工作区设置：她在哪些目录算"在家"
+- [x] 内建 B 站回归：工具、时间表、偏好、日报、私信分享、本地转写——0.30.0
+- [x] B 站值班改成「她本人去」：人设由 dsh-fish-kin 负责——0.30.0
+- [x] 老 dsh-bili-scroll 的凭证/判重表/偏好一次性搬入——0.30.0
+- [x] 身份证改成 18 位（330105 + 年月日 + 4 位编码），老 fish_ 格式仍可读——0.30.1
+- [x] 身份证前缀改为 `ds-fish-`（+ 年月日 + 4 位编码）——0.30.2
 - [ ] 跨平台验证（Linux/macOS）
+- [ ] 更细的「它刷过的视频」筛选与分页
 
 ## 致谢
 
 - 概念与踩坑启发自 **dsh-fish**（人格由事件生长、工具面收窄）；本项目**不依赖**它的代码或格式。
-- 早期版本的 B 站/谷时/审批设计参考过 **dsh-bili-scroll**，现已整体移除。
-- 二维码为自写实现（`lib/fish/qr.js`），未引入第三方二维码库。
+- B 站能力内置自 **dsh-bili-scroll**（MIT，c1overzz）与 **bilibili-mcp**（MIT，AGI_Ananas）；
+  本仓库只做「什么时候去、挑什么、要不要说话」这一层，并把人设交还给大肥鱼自己。署名见 `NOTICE.md` 与 `lib/bili/NOTICE.md`。
+- 二维码为自写实现，未引入第三方二维码库。
 
 ## 许可
 

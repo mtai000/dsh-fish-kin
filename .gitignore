@@ -15,3 +15,8 @@ archive/
 Thumbs.db
 .idea/
 .vscode/
+
+# Python 缓存（插件内置的 MCP / ASR 脚本）
+__pycache__/
+*.pyc
+.npm-cache/
