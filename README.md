@@ -29,6 +29,22 @@ A [DeepSeek Harness](https://github.com/deepseek-ai) plugin. An event-sourced "p
 - **不是备份工具**：生孩子不是复制粘贴，是有损压缩——边界带走，判断自己长。
 - **不是套壳**：事件格式、运行时、蒸馏、记忆折叠都是自己的实现，不 import 别人的代码，`dependencies` 是空的。
 
+## 身份证
+
+每条鱼有一张身份证，写在：
+
+```text
+<鱼家>/identity.json
+children/<childId>/identity.json
+```
+
+```json
+{"v":1,"identityId":"fish_01KC...","childId":null,"parentId":null,"lineageId":"fish_...","generation":1}
+```
+
+父代启动时没有就补一个；子代出生时生成自己的，带 `parentId/lineageId/childId`。
+它不是密码/权限凭证，只用来让 CDDA 把经验存到独立目录。
+
 ## 四个核心设计
 
 ### 1. 记忆有重量，但不删除
@@ -125,7 +141,7 @@ node tools/verify.mjs
 │   ├── events.jsonl  只追加的事件流
 │   ├── config.json   环境参数
 ├── lineage.jsonl     族谱（只追加）
-├── children/         每个孩子一个能直接养的存档目录
+├── children/         每个孩子一个能直接养的存档目录（含 identity.json / cdda-lessons.json）
 └── archive/          重开一局时归档的旧档
 ```
 

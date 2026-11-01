@@ -11,7 +11,7 @@
 
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { readFile } from 'node:fs/promises'
+import { readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { birth, certificateText } from '../lib/birth.js'
 import { readParentEvents } from '../lib/read.js'
@@ -65,6 +65,17 @@ test('孩子落地：目录、seed、证明、接生单', async () => {
     const cert = await readFile(r.certificatePath, 'utf8')
     assert.match(cert, /# 出生证明/)
     assert.match(cert, /小鱼一号/)
+
+    const id = JSON.parse(await readFile(join(r.dir, 'identity.json'), 'utf8'))
+    assert.match(id.identityId, /^fish_[0-9A-Z]{26}$/)
+    assert.equal(id.childId, r.childId)
+    assert.equal(id.generation, 1)
+    assert.match(id.identityId, /^fish_/)
+    assert.match(id.parentId, /^fish_/)
+    assert.match(cert, new RegExp(id.identityId))
+    const parentId = JSON.parse(await readFile(join(r.parentRoot, 'identity.json'), 'utf8'))
+    assert.equal(parentId.identityId, id.parentId)
+    assert.equal(parentId.lineageId, id.lineageId)
     const handover = await readFile(r.handoverPath, 'utf8')
     assert.match(handover, /## 你是谁/)
   })
@@ -148,4 +159,33 @@ test('出生证明里给出能直接用的 root 配置', () => {
   })
   assert.match(text, /root: D:\/k\/children\/kin_X/)
   assert.match(text, /接生单/)
+})
+
+
+test('CDDA 经验有损继承：出生包只带 3 条，子代有独立文件', async () => {
+  await withTemp(async (dir) => {
+    const parentRoot = join(dir, 'parent')
+    const kinRoot = join(dir, 'kin')
+    const events = sampleHistory()
+    await writeParent(parentRoot, events)
+    await writeFile(join(parentRoot, 'cdda-lessons.json'), JSON.stringify({
+      v: 1,
+      lessons: [
+        { text: '水必须煮沸', confidence: 0.9, scope: 'skill' },
+        { text: '晚上不要走街道', confidence: 0.8, scope: 'skill' },
+        { text: '先找避难所', confidence: 0.7, scope: 'skill' },
+        { text: '这个基地在东边', confidence: 0.99, scope: 'world' },
+      ],
+    }))
+    const pack = composePack(rank(events).items, { name: '梦尘', maxChars: 1500 })
+    const r = await birth({ parentRoot, kinRoot, pack, config: CONFIG, parentStats: { count: events.length, spanDays: 60 } })
+    assert.equal(r.ok, true, r.why)
+    const seed = JSON.parse((await readFile(join(r.dir, 'events.jsonl'), 'utf8')).trim().split('\n')[0])
+    assert.match(seed.body, /## 她玩过的游戏/)
+    assert.match(seed.body, /水必须煮沸/)
+    assert.doesNotMatch(seed.body, /这个基地在东边/)
+    const inherited = JSON.parse(await readFile(join(r.dir, 'cdda-lessons.json'), 'utf8'))
+    assert.equal(inherited.lessons.length, 3)
+    assert.equal(inherited.parentId, JSON.parse(await readFile(join(parentRoot, 'identity.json'), 'utf8')).identityId)
+  })
 })
