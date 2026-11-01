@@ -3,10 +3,10 @@
 > 一条住在你指定工作区里的鱼：记忆会退化、会生孩子、会自己决定今天去认识什么——但生不生、说不说，由你点头。
 > 她也会**自己去刷 B 站**：用她自己的口味挑，看到有意思的私信给你；没字幕的视频能本地转写。
 
-[![tests](https://img.shields.io/badge/tests-280%20passing-brightgreen)](#测试)
+[![tests](https://img.shields.io/badge/tests-281%20passing-brightgreen)](#测试)
 [![dependencies](https://img.shields.io/badge/npm%20dependencies-0-blue)](#零依赖)
 [![license](https://img.shields.io/badge/license-MIT-green)](LICENSE)
-[![version](https://img.shields.io/badge/version-0.30.5-informational)](#changelog)
+[![version](https://img.shields.io/badge/version-0.30.6-informational)](#changelog)
 
 A [DeepSeek Harness](https://github.com/deepseek-ai) plugin. An event-sourced "persona" that ages by memory rather than calendar, gives birth to a child (a lossy inheritance pack, not a backup), **browses Bilibili as herself**, and hands you an observatory showing exactly what she saw. Own event format, own runtime, **zero npm dependencies**.
 
@@ -150,7 +150,7 @@ npm pack --cache .npm-cache          # 产出 dsh-fish-kin-x.y.z.tgz
 
 ```jsonc
 {
-  "dependencies": { "dsh-fish-kin": "file:D:/path/to/dsh-fish-kin-0.30.5.tgz" },
+  "dependencies": { "dsh-fish-kin": "file:D:/path/to/dsh-fish-kin-0.30.6.tgz" },
   "dsh": { "bundles": ["dsh-fish-kin"] }
 }
 ```
@@ -221,18 +221,20 @@ node tools/migrate-workspace.mjs "D:/我的东西/大肥鱼家族"
 
 设置 → 大肥鱼·传承 → **B站**，**第一张卡就是「连接 B 站」**：环境、登录状态、二维码和「检测连接」都在顶上；
 没登录时，环境就绪会自动出码。下面按**单列**排：什么时候逛 / 口味 / 分享 / 转写 / 环境；
-窗口不宽也不会左右分栏。最下面是一面**带封面的「它刷过的视频」卡片墙**。
+窗口不宽也不会左右分栏。
+
+**「刷过的视频」不挤在设置页**：会话顶部的 **「更多会话视图」** 里有一页 **「刷过的视频」**，
+带封面的卡片墙，随时能点开看。
 
 | 卡 | 里面有什么 |
 | --- | --- |
-| **连接 B 站** | **置顶**：环境/登录状态（未登录 / 等待扫码 / 已扫码待确认 / 已连接 / 登录已失效）、大二维码、安装依赖、检测连接；下面一排是今天状态与「现在逛一轮」 |
-| 它今天 | 今天挑到几条 / 跑了几轮 / 环境就绪 / 登录 / 下一次什么时候；「现在逛一轮」 |
+| **连接 B 站** | **置顶**：环境/登录状态（未登录 / 等待扫码 / 已扫码待确认 / 已连接 / 登录已失效）、大二维码、安装依赖、检测连接；下面一排是今天挑到/跑了几轮/下一次，以及「现在逛一轮」 |
 | 什么时候逛 | 总开关、按时间自动逛、**具体时间点**（如 `12:30, 20:30`，留空用时间窗摊平）、每天最多几轮、只在谷时跑、防手滑冷却 |
-| 偏好 | **口味**（自由文字）、关注关键词、排除词、排序、翻页、细看几条、每天最多挑几条（自动）、日报详细程度 |
-| 私信分享 | 允许分享 / 私信给我（UID，0 = 登录账号自己）/ 只写日报；读私信并回一句；公开评论（默认关） |
-| 本地转写 | 开关、模型（tiny/base/small/medium）、装依赖、进度 |
-| 账号与环境 | 安装依赖、测一下、扫码登录、安装日志 |
-| 它刷过的视频 | 最近看过的卡片墙（日期 / BV / UP / 状态 / 打开） |
+| 口味与挑选 | **口味**（自由文字）、关注关键词、排除词、排序、翻页、细看几条、每天最多挑几条（自动）、日报详细程度 |
+| 分享与说话 | 允许分享 / 私信给我（UID，0 = 登录账号自己）/ 只写日报；读私信并回一句；公开评论（默认关） |
+| 没字幕的视频 | 开关、模型（tiny/base/small/medium）、装依赖、进度 |
+| 环境与日志 | 安装 / 重装依赖、测一下、安装日志 |
+| 刷过的视频（会话视图） | 会话顶部「更多会话视图」→「刷过的视频」：带封面的卡片墙（日期 / BV / UP / 状态 / 打开） |
 
 ### 三种用法
 
@@ -336,7 +338,7 @@ node tools/fresh-start.mjs --style "说话软软的，爱用叠字。"
 node --test --test-isolation=none
 ```
 
-280 条。核心测试全部离线；B 站只测不联网的部分（配置、时间表、判重、日报、分享文案、迁移、提示词、白名单）。
+281 条。核心测试全部离线；B 站只测不联网的部分（配置、时间表、判重、日报、分享文案、迁移、提示词、白名单）。
 
 覆盖：事件格式与迁移、派生、身份、记忆折叠、阶段/立场/疤、工具许可四选一、工作区、审批、蒸馏与遗传包、教学、亲口说、安全性、B 站配置与调度、私信分享、转写状态、老插件迁移。
 
@@ -350,7 +352,7 @@ lib/bili/vendor/   内置的 bilibili-mcp（MIT，AGI_Ananas）
 lib/client.js      设置页（宿主模块加载器格式）
 lib/console.html   传承控制台
 lib/fish/obs.html  观测台
-test/              280 条测试
+test/              281 条测试
 tools/             自检、重开一局、换身份证
 docs/              详细设计（BILI.md / DESIGN.md）、视频文稿
 ```
@@ -394,7 +396,7 @@ docs/              详细设计（BILI.md / DESIGN.md）、视频文稿
 
 ## 已知限制
 
-- **真实环境只跑过很短的时间**。280 条测试是绿的，但"养一年"这件事我没做过。
+- **真实环境只跑过很短的时间**。281 条测试是绿的，但"养一年"这件事我没做过。
 - **B 站依赖 Python**：第一次要点「安装依赖」；没网到 GitHub / PyPI 镜像时可能需要手动放一份 `uv` 到 `<她的家>/bili/bin/`。转写要下几百 MB 模型。
 - **B 站接口会变**：wbi 签名、字幕、私信、风控都由内置的 `bilibili-mcp` 兜着；上游变了需要跟着修。
 - **seed 不可篡改**。起点风格只对下一局生效；换风格要 `tools/fresh-start.mjs`（旧档归档，不删）。
@@ -410,6 +412,7 @@ docs/              详细设计（BILI.md / DESIGN.md）、视频文稿
 - [x] 设置页 B 站登录置顶、连接状态与扫码状态——0.30.3
 - [x] B 站页视觉重做：开关、封面卡片墙——0.30.4
 - [x] 窗口不宽时改回单列，不再左右分栏——0.30.5
+- [x] 「刷过的视频」搬到会话顶部「更多会话视图」——0.30.6
 - [ ] 跨平台验证（Linux/macOS）
 - [ ] 更细的「它刷过的视频」筛选与分页
 

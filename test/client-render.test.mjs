@@ -56,6 +56,14 @@ test('设置页组件能渲染（不会因为少个变量就空白）', () => {
   assert.ok(walkCount(tree) > 10, '渲染出来的节点太少，八成是某个页签炸了')
 })
 
+test('「刷过的视频」会话视图能渲染', () => {
+  const exports = loadClient()
+  assert.equal(typeof exports.BiliSeenView, 'function')
+  const tree = exports.BiliSeenView()
+  assert.ok(tree, '会话视图返回空')
+  assert.ok(walkCount(tree) > 3, '会话视图节点太少')
+})
+
 test('组件导出了宿主需要的 apply / inject', () => {
   const exports = loadClient()
   assert.equal(typeof exports.apply, 'function')
