@@ -6,7 +6,7 @@
 [![tests](https://img.shields.io/badge/tests-280%20passing-brightgreen)](#测试)
 [![dependencies](https://img.shields.io/badge/npm%20dependencies-0-blue)](#零依赖)
 [![license](https://img.shields.io/badge/license-MIT-green)](LICENSE)
-[![version](https://img.shields.io/badge/version-0.30.4-informational)](#changelog)
+[![version](https://img.shields.io/badge/version-0.30.5-informational)](#changelog)
 
 A [DeepSeek Harness](https://github.com/deepseek-ai) plugin. An event-sourced "persona" that ages by memory rather than calendar, gives birth to a child (a lossy inheritance pack, not a backup), **browses Bilibili as herself**, and hands you an observatory showing exactly what she saw. Own event format, own runtime, **zero npm dependencies**.
 
@@ -150,7 +150,7 @@ npm pack --cache .npm-cache          # 产出 dsh-fish-kin-x.y.z.tgz
 
 ```jsonc
 {
-  "dependencies": { "dsh-fish-kin": "file:D:/path/to/dsh-fish-kin-0.30.4.tgz" },
+  "dependencies": { "dsh-fish-kin": "file:D:/path/to/dsh-fish-kin-0.30.5.tgz" },
   "dsh": { "bundles": ["dsh-fish-kin"] }
 }
 ```
@@ -220,8 +220,8 @@ node tools/migrate-workspace.mjs "D:/我的东西/大肥鱼家族"
 ## B 站怎么用
 
 设置 → 大肥鱼·传承 → **B站**，**第一张卡就是「连接 B 站」**：环境、登录状态、二维码和「检测连接」都在顶上；
-没登录时，环境就绪会自动出码。下面按两栏排：左边「什么时候逛 / 口味」，右边「分享与说话 / 转写 / 环境」，
-最下面是一面**带封面的「它刷过的视频」卡片墙**。
+没登录时，环境就绪会自动出码。下面按**单列**排：什么时候逛 / 口味 / 分享 / 转写 / 环境；
+窗口不宽也不会左右分栏。最下面是一面**带封面的「它刷过的视频」卡片墙**。
 
 | 卡 | 里面有什么 |
 | --- | --- |
@@ -408,7 +408,8 @@ docs/              详细设计（BILI.md / DESIGN.md）、视频文稿
 - [x] 身份证改成 18 位（330105 + 年月日 + 4 位编码），老 fish_ 格式仍可读——0.30.1
 - [x] 身份证前缀改为 `ds-fish-`（+ 年月日 + 4 位编码）——0.30.2
 - [x] 设置页 B 站登录置顶、连接状态与扫码状态——0.30.3
-- [x] B 站页视觉重做：两栏卡片、开关、封面卡片墙——0.30.4
+- [x] B 站页视觉重做：开关、封面卡片墙——0.30.4
+- [x] 窗口不宽时改回单列，不再左右分栏——0.30.5
 - [ ] 跨平台验证（Linux/macOS）
 - [ ] 更细的「它刷过的视频」筛选与分页
 
