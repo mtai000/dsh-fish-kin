@@ -6,7 +6,7 @@
 [![tests](https://img.shields.io/badge/tests-282%20passing-brightgreen)](#测试)
 [![dependencies](https://img.shields.io/badge/npm%20dependencies-0-blue)](#零依赖)
 [![license](https://img.shields.io/badge/license-MIT-green)](LICENSE)
-[![version](https://img.shields.io/badge/version-0.30.7-informational)](#changelog)
+[![version](https://img.shields.io/badge/version-0.30.8-informational)](#changelog)
 
 A [DeepSeek Harness](https://github.com/deepseek-ai) plugin. An event-sourced "persona" that ages by memory rather than calendar, gives birth to a child (a lossy inheritance pack, not a backup), **browses Bilibili as herself**, and hands you an observatory showing exactly what she saw. Own event format, own runtime, **zero npm dependencies**.
 
@@ -150,7 +150,7 @@ npm pack --cache .npm-cache          # 产出 dsh-fish-kin-x.y.z.tgz
 
 ```jsonc
 {
-  "dependencies": { "dsh-fish-kin": "file:D:/path/to/dsh-fish-kin-0.30.7.tgz" },
+  "dependencies": { "dsh-fish-kin": "file:D:/path/to/dsh-fish-kin-0.30.8.tgz" },
   "dsh": { "bundles": ["dsh-fish-kin"] }
 }
 ```

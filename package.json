@@ -1,6 +1,6 @@
 {
   "name": "dsh-fish-kin",
-  "version": "0.30.7",
+  "version": "0.30.8",
   "description": "大肥鱼子代传承 + 自己的鱼：事件流人格、记忆退化、生育传承，并把 B 站（挑选/日报/私信分享/本地转写）内置成她自己的工具——人设由她本人负责。",
   "type": "module",
   "main": "lib/index.js",
